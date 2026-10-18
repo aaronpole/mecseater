@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
+import { readSearchResponse } from '@/lib/search/response';
 
 type SearchResult = {
   name: string;
@@ -26,12 +27,9 @@ export function StudentSearch() {
     setMessage(null);
     try {
       const response = await fetch(`/api/search?query=${encodeURIComponent(cleaned)}`);
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to search');
-      }
-      setResults(payload.results || []);
-      if (!payload.results?.length) {
+      const searchResults = await readSearchResponse(response);
+      setResults(searchResults);
+      if (!searchResults.length) {
         setMessage('No results found for the provided search.');
       }
     } catch (error) {
