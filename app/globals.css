@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-text antialiased;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+input::placeholder {
+  color: #a8a29e;
+}
+
+* {
+  box-sizing: border-box;
+}
