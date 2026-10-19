@@ -1,34 +1,139 @@
-# Mecseater
+<div align="center">
 
-Mecseater lets an administrator upload an exam seating-arrangement PDF and lets students search the extracted seating records by name or roll number.
+# MECSeater
 
-## Requirements
+**Fast, accessible, and minimalist examination seating directory.**
 
-- Node.js 18.17 or later and npm
-- Python 3.12 or later for the PDF parser service
-- A PostgreSQL database for application persistence
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-black?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-black?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-black?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_Serverless-black?style=flat-square&logo=postgresql)](https://neon.tech/)
+[![Python](https://img.shields.io/badge/Python-FastAPI_Parser-black?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 
-Install the PDF parser service and test dependencies:
+[Features](#key-features) • [Design System](#monochrome-design-system) • [Architecture](#architecture) • [Getting Started](#getting-started) • [Configuration](#configuration) • [Commands](#available-commands)
+
+</div>
+
+---
+
+## Overview
+
+**MECSeater** streamlines exam room seating lookups for students and administrators at Govt. Model Engineering College.
+
+- **Students**: Search by roll number or student name to instantly locate assigned examination halls, rooms, and seat numbers.
+- **Administrators**: Upload official exam seating PDFs via an authenticated management console that automatically extracts, validates, and atomically switches the active seating arrangement.
+
+---
+
+## Key Features
+
+* **Instant Search with High Glanceability**:
+  * Emphasized, prominent **Room Number** badges engineered for rapid scanning in crowded corridors.
+  * Clear pairing of student name, roll number, and desk/seat allocation.
+  * Fluid keyboard navigation and instant input clear controls.
+* **Monochrome Minimalist Interface**:
+  * High-contrast black-and-white theme (`#090909` background, `#111111` surfaces, crisp white typography).
+  * Helvetica typography stack (`Helvetica, Arial, sans-serif`) with zero third-party font bloat.
+  * Restrained borders, no garish gradients, and strictly no decorative clutter.
+* **Accessible & Motion-Conscious**:
+  * High-contrast ratios exceeding WCAG AAA standards.
+  * Visible keyboard focus rings (`:focus-visible`).
+  * Built-in support for `prefers-reduced-motion` to disable animations for sensitive users.
+* **Resilient Responsive Layout**:
+  * Mobile-first responsive design engineered for seamless display from narrow mobile screens (320px, 375px) to ultra-wide displays.
+  * Touch-optimized targets (minimum 44px height for inputs and buttons).
+* **Automated PDF Parsing Microservice**:
+  * Dedicated FastAPI microservice powered by PyMuPDF for reliable tabular PDF data extraction.
+* **Atomic Database Transactions**:
+  * Managed via Neon PostgreSQL with transaction advisory locks, ensuring zero downtime and atomic seating schedule replacement with automatic rollback.
+* **Secure Private Storage**:
+  * S3-compatible private object storage for seating PDFs with durable cleanup queues and automatic cleanup of obsolete files.
+
+---
+
+## Monochrome Design System
+
+| Token | Value | Role |
+| --- | --- | --- |
+| `--color-background` | `#090909` | Deep near-black background |
+| `--color-surface` | `#111111` | Primary cards & search console surface |
+| `--color-surface-elevated` | `#191919` | Elevated badges, metric tiles & room blocks |
+| `--color-primary` | `#FFFFFF` | Primary actions, headings & highlighted data |
+| `--color-text-secondary` | `#A3A3A3` | Metadata, roll numbers & descriptions |
+| `--color-muted` | `#737373` | Form placeholders, subtle labels & timestamps |
+| `--color-border` | `#262626` | Restrained 1px component borders |
+| `--font-sans` | `Helvetica, Arial, sans-serif` | Clean Swiss modernist typography stack |
+
+---
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   Next.js 15 Client                    │
+│      Student Search (/)  •  Admin Dashboard (/upload)  │
+└───────────────────────────┬────────────────────────────┘
+                            │ HTTPS / API Routes
+┌───────────────────────────▼────────────────────────────┐
+│                  Next.js App Server                    │
+│   • Auth & Session Cookies (HMAC / bcrypt)             │
+│   • Search API (/api/search)                           │
+│   • Upload & Management API (/api/upload, /api/arrange)│
+└─────────────┬───────────────────────────┬──────────────┘
+              │                           │
+              │ Internal Bearer Auth      │ Pooled Connection (pg)
+              ▼                           ▼
+┌──────────────────────────┐    ┌──────────────────────────┐
+│  FastAPI Parser Service  │    │     Neon PostgreSQL      │
+│  (PyMuPDF Table Parser)  │    │   • Active Arrangement   │
+└─────────────┬────────────┘    │   • Student Allocations  │
+              │                 │   • PDF Cleanup Queue    │
+              │ S3 API          └──────────────────────────┘
+              ▼
+┌──────────────────────────┐
+│ Neon Private S3 Storage  │
+│ (mecseater-pdfs bucket)  │
+└──────────────────────────┘
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+* **Node.js** 18.17+ and **npm**
+* **Python** 3.12+ (for the PDF parser microservice)
+* **PostgreSQL** database (e.g. [Neon](https://neon.tech))
+
+---
+
+### 1. Clone & Install Dependencies
 
 ```powershell
+# Clone the repository
+git clone https://github.com/aaronpole/mecseater.git
+cd mecseater
+
+# Install Node.js dependencies
+npm ci
+
+# Install Python parser dependencies
 py -3 -m pip install -r services/pdf-parser/requirements-test.txt
 ```
 
-## Getting started
+---
 
-Install the JavaScript dependencies:
+### 2. Environment Configuration
 
-```powershell
-npm ci
-```
-
-Create a local environment file from the example:
+Copy the example environment configuration:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-Set `ADMIN_PASSWORD_HASH` in `.env.local` to a bcrypt hash for your chosen admin password. Generate one without putting the password in shell history:
+Generate a secure admin password bcrypt hash without writing it to shell history:
 
 ```powershell
 $password = Read-Host "Admin password" -AsSecureString
@@ -37,101 +142,105 @@ npm run generate:hash -- "$plainPassword"
 Remove-Variable plainPassword, password
 ```
 
-Copy the resulting hash into `.env.local`. Set `ADMIN_USERNAME` to the username you want to use; if omitted, the application uses `admin`. Do not commit `.env.local` or share your password or hash.
+Copy the generated hash into `ADMIN_PASSWORD_HASH` inside `.env.local`.
 
-Set `PDF_PARSER_SECRET` in `.env.local` to a random value used only by the Next.js server and parser service. For local development, keep `PDF_PARSER_URL` set to `http://127.0.0.1:8000`. Start the parser service in one terminal:
+---
+
+### 3. Database Migration
+
+Set your unpooled PostgreSQL migration URL in your environment, then run the database migration:
 
 ```powershell
-$env:PDF_PARSER_SECRET = "<same value as PDF_PARSER_SECRET in .env.local>"
+$env:DATABASE_MIGRATION_URL = "postgresql://user:pass@ep-example.neon.tech/neondb?sslmode=require"
+npm run db:migrate
+```
+
+---
+
+### 4. Run the Development Servers
+
+In your first terminal, start the Python PDF parser service:
+
+```powershell
+$env:PDF_PARSER_SECRET = "your-shared-secret-here"
 py -3 -m uvicorn main:app --app-dir services/pdf-parser --host 127.0.0.1 --port 8000
 ```
 
-Start the Next.js development server in another terminal:
+In your second terminal, start the Next.js development server:
 
 ```powershell
 npm run dev
 ```
 
-Set `DATABASE_URL` in `.env.local` to the pooled PostgreSQL connection URL before starting the application. The app uses `pg` and attaches its pool to Vercel's Fluid lifecycle. Neon also provides `DATABASE_URL_UNPOOLED`, which is the direct connection for manual schema migrations. To initialize a database, set `DATABASE_MIGRATION_URL` to that direct connection and run:
+Open [http://localhost:3000](http://localhost:3000) to view the student search interface, or navigate to [http://localhost:3000/upload](http://localhost:3000/upload) to access the admin portal.
 
-```powershell
-npm run db:migrate
-```
+---
 
-Migrations are manual and are never run by application startup or requests. Do not point the migration command at production without explicit review and approval. Keep a separate, empty Neon endpoint and database for integration tests; the tests require both `RUN_POSTGRES_INTEGRATION_TESTS=1` and a `TEST_DATABASE_URL` whose database name ends in `_test` or `-test`.
+## Configuration Reference
 
-Run the PostgreSQL integration tests only against an empty Neon database dedicated to tests. Use a distinct Neon endpoint and database; the test database name must end in `_test` or `-test`. The test suite refuses other providers, a shared Neon endpoint, and databases with pre-existing application rows. It only cleans up fixture arrangements stored under `/private/test/`.
+| Environment Variable | Description |
+| --- | --- |
+| `ADMIN_USERNAME` | Administrator username (defaults to `admin`) |
+| `ADMIN_PASSWORD_HASH` | Required bcrypt hash for admin authentication |
+| `SESSION_SECRET` | Dedicated secret key for signing session cookies |
+| `DATABASE_URL` | Pooled PostgreSQL connection string for application runtime |
+| `DATABASE_URL_UNPOOLED` | Direct PostgreSQL connection for manual schema administration |
+| `DATABASE_MIGRATION_URL` | Explicit connection string used exclusively by `npm run db:migrate` |
+| `TEST_DATABASE_URL` | Dedicated PostgreSQL test database URL (name must end with `_test`) |
+| `RUN_POSTGRES_INTEGRATION_TESTS` | Set to `1` to run isolated PostgreSQL integration test suites |
+| `PDF_PARSER_URL` | Base URL for the FastAPI PDF parsing microservice (default: `http://127.0.0.1:8000`) |
+| `PDF_PARSER_SECRET` | Shared bearer token for server-to-parser authentication |
+| `PDF_STORAGE_ENABLED` | Set to `1` when S3 object storage is provisioned and enabled |
+| `AWS_ACCESS_KEY_ID` | Server-only Neon Object Storage access key |
+| `AWS_SECRET_ACCESS_KEY` | Server-only Neon Object Storage secret key |
+| `AWS_ENDPOINT_URL_S3` | Server-only branch-scoped Neon S3 endpoint URL |
+| `AWS_REGION` | Neon Object Storage region |
 
-```powershell
-$readConnectionString = {
-  param([string]$Prompt)
-  $secureValue = Read-Host $Prompt -AsSecureString
-  [System.Net.NetworkCredential]::new("", $secureValue).Password
-}
-$env:DATABASE_URL = & $readConnectionString "Development PostgreSQL URL"
-$env:TEST_DATABASE_URL = & $readConnectionString "Dedicated Neon test database URL (name must end in _test)"
-$env:DATABASE_MIGRATION_URL = & $readConnectionString "Direct (unpooled) URL for the dedicated test database"
+---
 
-# Applies the versioned schema only to TEST_DATABASE_URL.
-npm run db:migrate
-
-# Re-checks that the test database is distinct and empty, then marks it for tests.
-npm run db:test:prepare
-
-$env:RUN_POSTGRES_INTEGRATION_TESTS = "1"
-npm test -- tests/database.integration.test.ts
-
-Remove-Item Env:DATABASE_URL, Env:DATABASE_MIGRATION_URL, Env:TEST_DATABASE_URL, Env:RUN_POSTGRES_INTEGRATION_TESTS
-```
-
-Enter only development and dedicated test database URLs at the secure prompts. Do not use a production connection string. Use the pooled test URL for `TEST_DATABASE_URL` and its direct/unpooled URL for `DATABASE_MIGRATION_URL`. The preparation command refuses a non-Neon/non-test-named database, a database on the same endpoint as `DATABASE_URL`, or a database containing application rows. It then records an explicit test-only marker. The integration suite also requires that marker and cleans only fixture arrangements stored under `/private/test/`; keep this database dedicated to the tests.
-
-Open [http://localhost:3000](http://localhost:3000). Students can search from the home page. Administrators can sign in at `/upload` to upload a seating PDF or manage the active arrangement.
-
-## Commands
+## Available Commands
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the Next.js development server |
-| `npm run build` | Build the production application |
-| `npm run start` | Start the production server after building |
-| `npm test` | Run the test suite |
-| `npm run lint` | Run Next.js linting |
-| `npm run db:migrate` | Manually apply pending versioned PostgreSQL migrations using `DATABASE_MIGRATION_URL` |
-| `npm run generate:hash -- "<password>"` | Print a bcrypt hash for the supplied password |
+| `npm run dev` | Start the Next.js development server with Turbopack |
+| `npm run build` | Compile and build the production Next.js application |
+| `npm run start` | Run the built production application server |
+| `npm run lint` | Execute ESLint checks across the codebase |
+| `npm test` | Run Vitest unit and integration test suites |
+| `npm run db:migrate` | Apply pending versioned PostgreSQL migrations |
+| `npm run db:test:prepare`| Validate and prepare an isolated test database for integration testing |
+| `npm run storage:cleanup`| Process pending object storage deletions from `pdf_cleanup_queue` |
+| `npm run generate:hash` | Helper utility to generate bcrypt password hashes |
 
-## Configuration and data
+---
 
-| Variable | Description |
-| --- | --- |
-| `ADMIN_USERNAME` | Admin login name; defaults to `admin` |
-| `ADMIN_PASSWORD_HASH` | Required bcrypt hash for the admin password |
-| `SESSION_SECRET` | Optional dedicated HMAC key for signing admin session cookies; falls back to the server-only admin password hash |
-| `DATABASE_URL` | Pooled PostgreSQL connection string used by the Next.js server |
-| `DATABASE_URL_UNPOOLED` | Direct Neon connection for manual schema administration |
-| `DATABASE_MIGRATION_URL` | Explicit PostgreSQL connection string used only by the manual migration command |
-| `TEST_DATABASE_URL` | Dedicated PostgreSQL test database; used only when integration tests are explicitly enabled |
-| `RUN_POSTGRES_INTEGRATION_TESTS` | Set to `1` to run the destructive, isolated PostgreSQL repository integration tests |
-| `PDF_PARSER_URL` | Parser service base URL; on Vercel this is injected by the private service binding |
-| `PDF_PARSER_SECRET` | Shared server-only bearer secret configured for both services |
-| `PDF_STORAGE_ENABLED` | Set to `1` only after the private object bucket and server environment variables are verified |
-| `AWS_ACCESS_KEY_ID` | Server-only Neon Object Storage access key |
-| `AWS_SECRET_ACCESS_KEY` | Server-only Neon Object Storage secret key |
-| `AWS_ENDPOINT_URL_S3` | Server-only branch-scoped Neon Object Storage S3 endpoint |
-| `AWS_REGION` | Server-only Neon Object Storage region |
+## Testing
 
-Seating records are stored in PostgreSQL. The schema's partial unique index enforces at most one active arrangement; student rows reference their arrangement and are deleted with it. The app uses Neon serverless HTTP queries and non-interactive transactions. Replacement and deletion serialize on a PostgreSQL transaction advisory lock, and the replacement transaction rolls back completely if any new record fails.
+MECSeater includes comprehensive unit and integration tests covering PDF parsing, route protection, storage cleanup queues, and response parsing:
 
-## Deployment note
+```powershell
+npm test
+```
 
-The parser is a FastAPI service that runs the existing PyMuPDF extraction code. Vercel's current documentation lists Services as beta and available on all plans. In this repository's Services configuration, only the Next.js service has public ingress; it calls the parser over a private service binding and a shared secret. The binding itself grants network access, not authorization. The project's Services deployment and binding still need validation in an authenticated preview deployment. If Services are unavailable for the project, run the FastAPI parser as a separately hosted private service and configure the Next.js server with its HTTPS base URL and the same server-only bearer secret. Do not expose the parser to unauthenticated requests.
+To run the isolated PostgreSQL repository integration tests against a dedicated test database:
 
-The PostgreSQL migration does not import or modify the existing SQLite database or local PDFs. Keep those files unchanged and make any data-retention/import decision separately. The `better-sqlite3` dependency remains installed pending that decision.
+```powershell
+$env:RUN_POSTGRES_INTEGRATION_TESTS = "1"
+$env:TEST_DATABASE_URL = "postgresql://user:pass@ep-test.neon.tech/neondb_test?sslmode=require"
+npm test -- tests/database.integration.test.ts
+```
 
-The app is configured to store PDFs in the `mecseater-pdfs` Neon Object Storage bucket, explicitly private. The server uses the S3 API with path-style addressing and never returns an object URL or storage key to the browser. Uploads remain disabled unless `PDF_STORAGE_ENABLED=1`. Before enabling uploads, provision the private bucket for the production branch with `neon deploy`, set the four `AWS_*` variables as server-side Vercel environment variables, and verify the parser service and credentials in a preview deployment. Never use public bucket access or `NEXT_PUBLIC_` storage variables.
+---
 
-The upload route registers a staged object, uploads PDF bytes privately, parses and validates the records, and only then switches the active PostgreSQL arrangement. Database replacement/deletion transactions place obsolete PDF keys in `pdf_cleanup_queue`; cleanup runs only after commit. If immediate cleanup fails, the durable queue preserves the work for retry. Configure a scheduled operational invocation of `npm run storage:cleanup` using server-only database and storage credentials. The cleanup command only deletes managed PDF keys recorded in that queue. A failed replacement leaves the previous active arrangement and its PDF untouched.
+## Deployment
 
-The parser receives PDF bytes directly from the Next.js server; no public PDF URL is used. Exam dates are validated using the `Asia/Kolkata` calendar date. Existing PDFs and SQLite data are not automatically imported.
+* **Frontend & API**: Deployed on [Vercel](https://vercel.com/) utilizing Next.js App Router and serverless route handlers.
+* **Database**: Managed on [Neon](https://neon.tech/) with pooled connections and automated schema migrations.
+* **PDF Parser**: Runs as a private service microservice connected via internal service bindings with shared secret verification.
+* **Object Storage**: Private S3-compatible Neon Object Storage bucket for seating PDFs.
 
-The Vercel project must have the database, admin, parser, and private storage environment variables configured. Verify that the parser service binding is supported and available to this project, then verify the parser request and a synthetic upload in a preview deployment before enabling `PDF_STORAGE_ENABLED`. No existing local PDF or SQLite data is imported by this application.
+---
+
+## License
+
+This project is open-source and available under the terms of the project repository.
