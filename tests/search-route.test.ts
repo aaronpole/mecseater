@@ -1,13 +1,11 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { initializeDatabaseMock, searchStudentsMock } = vi.hoisted(() => ({
-  initializeDatabaseMock: vi.fn(),
+const { searchStudentsMock } = vi.hoisted(() => ({
   searchStudentsMock: vi.fn(),
 }));
 
 vi.mock('@/lib/db/database', () => ({
-  initializeDatabase: initializeDatabaseMock,
   searchStudents: searchStudentsMock,
 }));
 
@@ -19,7 +17,7 @@ describe('GET /api/search', () => {
   });
 
   it('returns JSON search results for the query parameter', async () => {
-    searchStudentsMock.mockReturnValue([{ name: 'Synthetic Student', roll_no: '24ME001', room_no: '107', seat_no: 'A01' }]);
+    searchStudentsMock.mockResolvedValue([{ name: 'Synthetic Student', roll_no: '24ME001', room_no: '107', seat_no: 'A01' }]);
 
     const response = await GET(new NextRequest('https://mecseater.test/api/search?query=24ME001'));
 
@@ -32,9 +30,9 @@ describe('GET /api/search', () => {
   });
 
   it('returns a safe JSON error and logs no query or student data when persistence fails', async () => {
-    initializeDatabaseMock.mockImplementation(() => {
-      throw Object.assign(new Error('read-only database path contains private details'), { code: 'EROFS' });
-    });
+    searchStudentsMock.mockRejectedValue(
+      Object.assign(new Error('database contains private details'), { code: '08006' }),
+    );
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const response = await GET(new NextRequest('https://mecseater.test/api/search?query=private-student'));
@@ -44,7 +42,7 @@ describe('GET /api/search', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Search is temporarily unavailable. Please try again later.',
     });
-    expect(consoleError).toHaveBeenCalledWith('[api/search] Search failed:', 'EROFS');
+    expect(consoleError).toHaveBeenCalledWith('[api/search] Search failed:', '08006');
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('private-student');
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('private details');
     consoleError.mockRestore();

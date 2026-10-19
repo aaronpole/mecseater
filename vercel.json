@@ -1,0 +1,29 @@
+{
+  "services": {
+    "mecseater": {
+      "root": ".",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "pdf-parser",
+          "format": "url",
+          "env": "PDF_PARSER_URL"
+        }
+      ]
+    },
+    "pdf-parser": {
+      "root": "services/pdf-parser",
+      "framework": "fastapi",
+      "entrypoint": "main:app"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "mecseater"
+      }
+    }
+  ]
+}

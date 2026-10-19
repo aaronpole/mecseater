@@ -4,10 +4,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const { initializeDatabase, searchStudents } = await import('@/lib/db/database');
-    initializeDatabase();
+    const { searchStudents } = await import('@/lib/db/database');
     const query = new URL(request.url).searchParams.get('query') || '';
-    const results = searchStudents(query);
+    const results = await searchStudents(query);
 
     return NextResponse.json({ results });
   } catch (error) {

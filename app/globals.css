@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #11100f;
+  --color-surface: #1b1917;
+  --color-primary: #f97316;
+  --color-primary-hover: #fb923c;
+  --color-text: #faf7f2;
+  --color-muted: #a8a29e;
+  --color-border: #38312c;
+  --shadow-soft: 0 10px 30px rgba(249, 115, 22, 0.18);
+}
 
 :root {
   color-scheme: dark;

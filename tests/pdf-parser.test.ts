@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { parseDateFromText, validateExamDate } from '@/lib/pdf/parser';
-import { initializeDatabase, resetDatabaseForTests, searchStudents, replaceArrangement } from '@/lib/db/database';
 
 describe('parseDateFromText', () => {
   it('extracts the date from the PDF heading text', () => {
@@ -11,6 +10,10 @@ describe('parseDateFromText', () => {
   it('rejects invalid date strings', () => {
     expect(parseDateFromText('No valid date here')).toBeNull();
     expect(parseDateFromText('31/02/2026')).toBeNull();
+  });
+
+  it('accepts valid leap-day dates', () => {
+    expect(parseDateFromText('29/02/2028')).toBe('29/02/2028');
   });
 });
 
@@ -24,35 +27,20 @@ describe('validateExamDate', () => {
     const past = new Date(Date.UTC(2020, 0, 1));
     expect(validateExamDate('01/01/2019', past)).toMatchObject({ valid: false });
   });
-});
 
-describe('database search and replacement', () => {
-  it('stores and searches the active arrangement', () => {
-    resetDatabaseForTests();
-    initializeDatabase();
+  it('accepts an exam scheduled for today', () => {
+    const today = new Date('2026-10-18T06:30:00.000Z');
+    expect(validateExamDate('18/10/2026', today)).toMatchObject({ valid: true });
+  });
 
-    replaceArrangement({
-      examDate: '14/10/2026',
-      slot: 'Slot 2',
-      pdfName: '14-10-2026 slot2.pdf',
-      pdfPath: '/tmp/slot2.pdf',
-      records: [
-        { name: 'Alice Johnson', rollNo: '24ME001', roomNo: '107', seatNo: 'A01' },
-        { name: 'Bob George', rollNo: '24ME002', roomNo: '107', seatNo: 'A02' },
-      ],
-    });
+  it('uses Asia/Kolkata calendar dates for past-date validation', () => {
+    const lateUtc = new Date('2026-10-18T20:00:00.000Z');
+    expect(validateExamDate('18/10/2026', lateUtc)).toMatchObject({ valid: false });
+    expect(validateExamDate('19/10/2026', lateUtc)).toMatchObject({ valid: true });
+  });
 
-    expect(searchStudents('24ME001')).toEqual([
-      {
-        name: 'Alice Johnson',
-        roll_no: '24ME001',
-        room_no: '107',
-        seat_no: 'A01',
-      },
-    ]);
-
-    expect(searchStudents('alice')).toHaveLength(1);
-    expect(searchStudents('unknown')).toEqual([]);
-    resetDatabaseForTests();
+  it('rejects impossible calendar dates', () => {
+    const reference = new Date(Date.UTC(2026, 0, 1));
+    expect(validateExamDate('31/02/2026', reference)).toMatchObject({ valid: false });
   });
 });

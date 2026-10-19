@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -14,17 +15,42 @@ export function encodeSession(username: string, expiresMinutes = 60) {
     exp: Math.floor(Date.now() / 1000) + expiresMinutes * 60,
   };
 
-  return Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${encodedPayload}.${signSession(encodedPayload)}`;
+}
+
+function signSession(encodedPayload: string) {
+  const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD_HASH;
+  if (!secret) {
+    throw new Error('SESSION_SECRET or ADMIN_PASSWORD_HASH is required to sign admin sessions.');
+  }
+  return createHmac('sha256', secret).update(encodedPayload).digest('base64url');
 }
 
 export function decodeSession(value: string | undefined) {
-  if (!value) {
+  if (!value || !value.includes('.')) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<SessionPayload>;
-    if (!parsed.username || !parsed.exp || parsed.exp < Date.now() / 1000) {
+    const [encodedPayload, signature, ...extraParts] = value.split('.');
+    if (!encodedPayload || !signature || extraParts.length > 0) {
+      return null;
+    }
+    const expectedSignature = signSession(encodedPayload);
+    const supplied = Buffer.from(signature);
+    const expected = Buffer.from(expectedSignature);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      return null;
+    }
+
+    const parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<SessionPayload>;
+    if (
+      typeof parsed.username !== 'string' ||
+      !parsed.username ||
+      typeof parsed.exp !== 'number' ||
+      parsed.exp < Date.now() / 1000
+    ) {
       return null;
     }
 
@@ -34,8 +60,8 @@ export function decodeSession(value: string | undefined) {
   }
 }
 
-export function getSessionUsername() {
-  const cookieStore = cookies();
+export async function getSessionUsername() {
+  const cookieStore = await cookies();
   return decodeSession(cookieStore.get(SESSION_COOKIE)?.value) ?? null;
 }
 

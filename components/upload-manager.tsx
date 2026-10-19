@@ -20,7 +20,7 @@ export function UploadManager({ initialArrangement, initialLoggedIn }: { initial
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [loginForm, setLoginForm] = useState({ username: 'admin', password: 'mec123' });
+  const [loginForm, setLoginForm] = useState({ username: 'admin', password: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -82,7 +82,11 @@ export function UploadManager({ initialArrangement, initialLoggedIn }: { initial
         throw new Error(payload.error || 'Upload failed');
       }
       setArrangement(payload.arrangement);
-      setStatus(`Upload succeeded: ${payload.arrangement?.pdf_name || 'new seating arrangement'} imported.`);
+      setStatus(
+        payload.cleanupPending
+          ? 'Upload succeeded. Cleanup of the previous PDF is pending and will be retried.'
+          : `Upload succeeded: ${payload.arrangement?.pdf_name || 'new seating arrangement'} imported.`,
+      );
       setFile(null);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Upload failed');
@@ -102,7 +106,11 @@ export function UploadManager({ initialArrangement, initialLoggedIn }: { initial
         throw new Error(payload.error || 'Delete failed');
       }
       setArrangement(null);
-      setStatus('Current seating arrangement deleted.');
+      setStatus(
+        payload.cleanupPending
+          ? 'Seating arrangement deleted. PDF cleanup is pending and will be retried.'
+          : 'Current seating arrangement deleted.',
+      );
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Delete failed');
     } finally {
