@@ -1,29 +1,62 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #11100f;
-  --color-surface: #1b1917;
-  --color-primary: #f97316;
-  --color-primary-hover: #fb923c;
-  --color-text: #faf7f2;
-  --color-muted: #a8a29e;
-  --color-border: #38312c;
-  --shadow-soft: 0 10px 30px rgba(249, 115, 22, 0.18);
+  --color-background: #090909;
+  --color-surface: #111111;
+  --color-surface-elevated: #191919;
+  --color-surface-hover: #222222;
+  --color-primary: #ffffff;
+  --color-primary-hover: #f7f7f7;
+  --color-text: #ffffff;
+  --color-text-secondary: #a3a3a3;
+  --color-muted: #737373;
+  --color-border: #262626;
+  --color-border-subtle: #1c1c1c;
+  --color-border-strong: #383838;
+  --font-sans: Helvetica, Arial, sans-serif;
 }
 
 :root {
   color-scheme: dark;
 }
 
-body {
-  @apply bg-background text-text antialiased;
-  font-family: Arial, Helvetica, sans-serif;
+html {
+  background-color: #090909;
+  color: #ffffff;
+  font-family: Helvetica, Arial, sans-serif;
 }
 
-input::placeholder {
-  color: #a8a29e;
+body {
+  @apply bg-background text-text antialiased;
+  font-family: Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #737373;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Accessible visible keyboard focus */
+:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

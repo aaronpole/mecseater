@@ -7,10 +7,11 @@ export default async function UploadPage() {
   const arrangement = isLoggedIn ? await getActiveArrangement() : null;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl items-start justify-center px-4 py-10">
-      <div className="w-full">
-        <UploadManager initialArrangement={arrangement ? { ...arrangement, student_count: arrangement.student_count || 0 } : null} initialLoggedIn={isLoggedIn} />
-      </div>
+    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+      <UploadManager
+        initialArrangement={arrangement ? { ...arrangement, student_count: arrangement.student_count || 0 } : null}
+        initialLoggedIn={isLoggedIn}
+      />
     </main>
   );
 }
