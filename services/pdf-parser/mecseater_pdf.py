@@ -15,7 +15,12 @@ def is_course_code(value):
 
 
 def is_roll_number(value):
-    return bool(re.fullmatch(r"\d{2}[A-Z]{2,3}\d{2,3}", value.upper()))
+    normalized = value.strip().upper()
+    # Legacy IDs (for example, 24ME001) and KTU IDs with institute,
+    # year, programme, and optional work-programme components.
+    return bool(
+        re.fullmatch(r"(?:\d{2}[A-Z]{2,3}\d{3}|[A-Z]{2,4}\d{2}[A-Z]{2,5}\d{3})", normalized)
+    )
 
 
 def is_seat_number(value):
@@ -23,15 +28,16 @@ def is_seat_number(value):
 
 
 def find_exam_date(text):
-    match = re.search(r"\b(\d{2}/\d{2}/\d{4})\b", text)
+    match = re.search(r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b", text)
     if not match:
         raise ValueError("Exam date is missing or invalid in the PDF.")
     value = match.group(1)
+    date_format = "%d/%m/%Y" if "/" in value else "%d-%m-%Y"
     try:
-        datetime.strptime(value, "%d/%m/%Y")
+        parsed_date = datetime.strptime(value, date_format)
     except ValueError as exc:
         raise ValueError("Exam date is missing or invalid in the PDF.") from exc
-    return value
+    return parsed_date.strftime("%d/%m/%Y")
 
 
 def find_slot(text, exam_date):
