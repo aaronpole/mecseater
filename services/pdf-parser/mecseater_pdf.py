@@ -27,6 +27,50 @@ def is_seat_number(value):
     return bool(re.fullmatch(r"[A-Z]\d{2,3}", value.upper()))
 
 
+def extract_room_header(lines, index):
+    """Handle ROOM 107, ROOM NO. 107, and ROOM followed by 107."""
+    line = lines[index].strip()
+    match = re.fullmatch(
+        r"ROOM(?:\s+(?:NO\.?|NUMBER))?\.?\s*[:#-]?\s*(.*)",
+        line,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None, index
+
+    room = match.group(1).strip()
+    if room:
+        return room, index + 1
+
+    next_index = index + 1
+    if next_index < len(lines):
+        candidate = lines[next_index].strip()
+        if candidate and not re.match(
+            r"^(?:SL\b|SEAT\b|KTU\b|NAME\b|COURSE\b)",
+            candidate,
+            re.IGNORECASE,
+        ):
+            return candidate, next_index + 1
+
+    return None, index + 1
+
+
+def parse_inline_student_row(line):
+    """Parse a full student row when PDF extraction keeps columns on one line."""
+    match = re.fullmatch(
+        r"(?:(\d+)\s+)?([A-Z]\d{2,3})\s+([A-Z0-9]+)\s+(.+?)\s+([A-Z]{2,6}\d{3,4})",
+        line.strip(),
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    seat, roll, name, course = match.group(2), match.group(3), match.group(4), match.group(5)
+    if not is_seat_number(seat) or not is_roll_number(roll) or not is_course_code(course):
+        return None
+    return {"name": normalize_name([name]), "rollNo": roll.upper(), "seatNo": seat.upper()}
+
+
 def find_exam_date(text):
     match = re.search(r"\b(\d{2}[/-]\d{2}[/-]\d{4})\b", text)
     if not match:
@@ -70,19 +114,24 @@ def parse_pdf(pdf_path):
         while index < len(lines):
             line = lines[index]
 
-            # KTU seating PDFs commonly put the room number on the same
-            # line ("ROOM 107"); older layouts put it on the next line.
-            room_match = re.fullmatch(r"ROOM\s+(.+)", line, re.IGNORECASE)
-            if room_match:
-                current_room = room_match.group(1).strip()
-                index += 1
+            # KTU room headers vary across generated seating PDFs.
+            room, next_index = extract_room_header(lines, index)
+            if room is not None:
+                current_room = room
+                index = next_index
                 continue
 
-            if line.lower() == "room":
-                if index + 1 < len(lines):
-                    candidate = lines[index + 1].strip()
-                    if candidate and not candidate.lower().startswith("sl"):
-                        current_room = candidate
+            # Some extractors preserve all table columns on one text line.
+            inline_record = parse_inline_student_row(line)
+            if inline_record and current_room:
+                record = {**inline_record, "roomNo": current_room}
+                if record["rollNo"] in seen_rolls:
+                    raise ValueError(f"Duplicate roll number found: {record['rollNo']}")
+                if record["roomNo"] in seen_seats and record["seatNo"] in seen_seats[record["roomNo"]]:
+                    raise ValueError(f"Conflicting seat assignment found for room {record['roomNo']} seat {record['seatNo']}")
+                seen_rolls[record["rollNo"]] = True
+                seen_seats.setdefault(record["roomNo"], set()).add(record["seatNo"])
+                records.append(record)
                 index += 1
                 continue
 
