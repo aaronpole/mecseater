@@ -42,6 +42,7 @@ class KtuPdfRegressionTests(unittest.TestCase):
             "LMDL23CS198",
             "MDL23CSBS067",
             "MDL22ECWP001",
+            "LMDL23EVLSI064",
             "24ME001",
         )
         for value in valid_ids:
@@ -86,6 +87,11 @@ class KtuPdfRegressionTests(unittest.TestCase):
                 "MDL22ECWP001",
                 "PAULSON T VARGHESE",
                 "EET401",
+                "5",
+                "A05",
+                "LMDL23EVLSI064",
+                "SYNTHETIC VLSI STUDENT",
+                "EVT401",
             ],
         )
 
@@ -100,6 +106,7 @@ class KtuPdfRegressionTests(unittest.TestCase):
                 ("CEC23EC012", "A02", "107"),
                 ("MDL23CSBS067", "A03", "107"),
                 ("MDL22ECWP001", "A04", "107"),
+                ("LMDL23EVLSI064", "A05", "107"),
             ],
         )
 
