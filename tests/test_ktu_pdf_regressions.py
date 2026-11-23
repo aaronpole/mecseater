@@ -111,5 +111,42 @@ class KtuPdfRegressionTests(unittest.TestCase):
         )
 
 
+    def test_parses_ktu_layout_with_room_number_on_same_header_line(self):
+        write_pdf(
+            self.pdf_path,
+            [
+                "B.Tech S5 (R) Exam Nov 2026 (2024 Scheme)",
+                "23-11-2026 Monday AN",
+                "ROOM 107",
+                "SL",
+                "NO",
+                "SEAT KTU ID",
+                "NAME",
+                "COURSE CODE",
+                "1",
+                "A01",
+                "MDL24EBE049",
+                "SYNTHETIC STUDENT ONE",
+                "PCEBT501",
+                "2",
+                "A02",
+                "LMDL24CSBS067",
+                "SYNTHETIC STUDENT TWO",
+                "PCCST501",
+            ],
+        )
+
+        result = parse_pdf(self.pdf_path)
+
+        self.assertEqual(result["examDate"], "23/11/2026")
+        self.assertEqual(
+            [(row["rollNo"], row["seatNo"], row["roomNo"]) for row in result["records"]],
+            [
+                ("MDL24EBE049", "A01", "107"),
+                ("LMDL24CSBS067", "A02", "107"),
+            ],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
