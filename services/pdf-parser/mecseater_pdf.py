@@ -19,7 +19,7 @@ def is_roll_number(value):
     # Legacy IDs (for example, 24ME001) and KTU IDs with institute,
     # year, programme, and optional work-programme components.
     return bool(
-        re.fullmatch(r"(?:\d{2}[A-Z]{2,3}\d{3}|[A-Z]{2,4}\d{2}[A-Z]{2,4}\d{3})", normalized)
+        re.fullmatch(r"(?:\d{2}[A-Z]{2,3}\d{3}|[A-Z]{2,4}\d{2}[A-Z]{2,5}\d{3})", normalized)
     )
 
 
