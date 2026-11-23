@@ -148,5 +148,53 @@ class KtuPdfRegressionTests(unittest.TestCase):
         )
 
 
+
+    def test_supports_common_room_header_variations(self):
+        for header_lines, expected_room in (
+            (["ROOM 107"], "107"),
+            (["ROOM NO. 107"], "107"),
+            (["ROOM NUMBER: 107"], "107"),
+            (["ROOM", "107"], "107"),
+            (["ROOM NO.", "107"], "107"),
+        ):
+            with self.subTest(header=header_lines):
+                write_pdf(
+                    self.pdf_path,
+                    [
+                        "B.Tech S5 Exam Nov 2026",
+                        "23-11-2026 Monday AN",
+                        *header_lines,
+                        "1",
+                        "A01",
+                        "MDL24EBE049",
+                        "SYNTHETIC STUDENT",
+                        "PCEBT501",
+                    ],
+                )
+                result = parse_pdf(self.pdf_path)
+                self.assertEqual(result["records"][0]["roomNo"], expected_room)
+
+    def test_parses_student_row_when_columns_are_extracted_on_one_line(self):
+        write_pdf(
+            self.pdf_path,
+            [
+                "B.Tech S5 Exam Nov 2026",
+                "23-11-2026 Monday AN",
+                "ROOM NO. 201",
+                "1 A01 MDL24EBE049 SYNTHETIC STUDENT PCEBT501",
+                "2 A02 LMDL24CSBS067 ANOTHER SYNTHETIC STUDENT PCCST501",
+            ],
+        )
+
+        result = parse_pdf(self.pdf_path)
+
+        self.assertEqual(
+            [(row["rollNo"], row["seatNo"], row["roomNo"]) for row in result["records"]],
+            [
+                ("MDL24EBE049", "A01", "201"),
+                ("LMDL24CSBS067", "A02", "201"),
+            ],
+        )
+
 if __name__ == "__main__":
     unittest.main()
