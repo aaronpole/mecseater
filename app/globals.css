@@ -6,14 +6,21 @@
   --color-surface-elevated: #191919;
   --color-surface-hover: #222222;
   --color-primary: #ffffff;
-  --color-primary-hover: #f7f7f7;
+  --color-primary-hover: #e5e5e5;
   --color-text: #ffffff;
   --color-text-secondary: #a3a3a3;
-  --color-muted: #737373;
+  --color-muted: #8a8a8a;
   --color-border: #262626;
   --color-border-subtle: #1c1c1c;
   --color-border-strong: #383838;
+  --color-danger: #fca5a5;
+  --color-danger-border: #4a1f1f;
+  --color-danger-surface: #170e0e;
+  --color-success: #bbf7d0;
+  --color-success-border: #1f3a26;
+  --color-success-surface: #0c140e;
   --font-sans: Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 :root {
@@ -21,35 +28,31 @@
 }
 
 html {
-  background-color: #090909;
-  color: #ffffff;
-  font-family: Helvetica, Arial, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }
 
 body {
   @apply bg-background text-text antialiased;
-  font-family: Helvetica, Arial, sans-serif;
   min-height: 100vh;
   margin: 0;
-  padding: 0;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #737373;
+input::placeholder {
+  color: var(--color-muted);
 }
 
-* {
-  box-sizing: border-box;
+::selection {
+  background: var(--color-primary);
+  color: var(--color-background);
 }
 
-/* Accessible visible keyboard focus */
 :focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

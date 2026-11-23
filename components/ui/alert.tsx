@@ -2,26 +2,22 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'info' | 'success' | 'error' | 'destructive';
+  readonly variant?: 'default' | 'info' | 'success' | 'error' | 'destructive';
 }
 
-export function Alert({ className, variant = 'default', role = 'alert', ...props }: AlertProps) {
-  const variants: Record<NonNullable<AlertProps['variant']>, string> = {
-    default: 'border-[#262626] bg-[#141414] text-white',
-    info: 'border-[#333333] bg-[#161616] text-[#e5e5e5]',
-    success: 'border-[#243324] bg-[#0d140d] text-[#dcfce7]',
-    error: 'border-[#3d1c1c] bg-[#170e0e] text-[#fca5a5]',
-    destructive: 'border-[#3d1c1c] bg-[#170e0e] text-[#fca5a5]',
-  };
+const variants: Readonly<Record<NonNullable<AlertProps['variant']>, string>> = {
+  default: 'border-border bg-surface text-text',
+  info: 'border-border bg-surface text-text-secondary',
+  success: 'border-success-border bg-success-surface text-success',
+  error: 'border-danger-border bg-danger-surface text-danger',
+  destructive: 'border-danger-border bg-danger-surface text-danger',
+};
 
+export function Alert({ className, variant = 'default', role = 'alert', ...props }: AlertProps): React.JSX.Element {
   return (
     <div
       role={role}
-      className={cn(
-        'rounded-md border p-4 text-sm font-normal leading-relaxed transition-colors',
-        variants[variant],
-        className,
-      )}
+      className={cn('rounded-md border px-4 py-3 text-sm leading-relaxed', variants[variant], className)}
       {...props}
     />
   );

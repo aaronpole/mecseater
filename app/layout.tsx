@@ -5,8 +5,8 @@ import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
-  title: 'MECSeater — Student Exam Seating Lookup',
-  description: 'Instant exam hall and seat allocation lookup for students.',
+  title: 'MECSeater — Find your exam seat',
+  description: 'Look up your exam room and seat number at Govt. Model Engineering College by roll number or name.',
 };
 
 export const viewport: Viewport = {
@@ -15,12 +15,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { readonly children: React.ReactNode }): React.JSX.Element {
   return (
     <html lang="en" className="dark">
-      <body className="flex min-h-screen flex-col bg-[#090909] text-white font-sans antialiased selection:bg-white selection:text-[#090909]">
+      <body className="flex min-h-screen flex-col bg-background font-sans text-text antialiased">
         <Navbar />
-        <div className="flex-1 w-full">{children}</div>
+        <div className="w-full flex-1">{children}</div>
         <Footer />
         <Analytics />
       </body>

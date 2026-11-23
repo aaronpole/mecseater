@@ -29,7 +29,7 @@
 ## Key Features
 
 * **Instant Search with High Glanceability**:
-  * Emphasized, prominent **Room Number** badges engineered for rapid scanning in crowded corridors.
+  * Room and seat shown as large figures side by side, readable at a glance in a crowded corridor.
   * Clear pairing of student name, roll number, and desk/seat allocation.
   * Fluid keyboard navigation and instant input clear controls.
 * **Monochrome Minimalist Interface**:
@@ -37,7 +37,7 @@
   * Helvetica typography stack (`Helvetica, Arial, sans-serif`) with zero third-party font bloat.
   * Restrained borders, no garish gradients, and strictly no decorative clutter.
 * **Accessible & Motion-Conscious**:
-  * High-contrast ratios exceeding WCAG AAA standards.
+  * Text meets WCAG AA contrast; primary text and figures are white on near-black.
   * Visible keyboard focus rings (`:focus-visible`).
   * Built-in support for `prefers-reduced-motion` to disable animations for sensitive users.
 * **Resilient Responsive Layout**:
@@ -56,14 +56,21 @@
 
 | Token | Value | Role |
 | --- | --- | --- |
-| `--color-background` | `#090909` | Deep near-black background |
-| `--color-surface` | `#111111` | Primary cards & search console surface |
-| `--color-surface-elevated` | `#191919` | Elevated badges, metric tiles & room blocks |
-| `--color-primary` | `#FFFFFF` | Primary actions, headings & highlighted data |
-| `--color-text-secondary` | `#A3A3A3` | Metadata, roll numbers & descriptions |
-| `--color-muted` | `#737373` | Form placeholders, subtle labels & timestamps |
-| `--color-border` | `#262626` | Restrained 1px component borders |
-| `--font-sans` | `Helvetica, Arial, sans-serif` | Clean Swiss modernist typography stack |
+| `--color-background` | `#090909` | Page background |
+| `--color-surface` | `#111111` | Search field, seat cards & panels |
+| `--color-surface-elevated` | `#191919` | Secondary buttons & skeleton blocks |
+| `--color-primary` | `#FFFFFF` | Primary action & focus rings |
+| `--color-text-secondary` | `#A3A3A3` | Labels, roll numbers & descriptions |
+| `--color-muted` | `#8A8A8A` | Placeholders & hints (≥ 4.5:1 on the background) |
+| `--color-border` | `#262626` | 1px component borders |
+| `--color-danger` / `--color-success` | `#FCA5A5` / `#BBF7D0` | Error and confirmation text, with matching `-border` and `-surface` tokens |
+| `--font-sans` | `Helvetica, Arial, sans-serif` | Interface typography |
+
+Components use these tokens through Tailwind utilities (`bg-surface`, `text-text-secondary`, `border-border`, …) rather than raw hex values.
+
+### Logo
+
+The mark (`components/logo.tsx`, favicon at `app/icon.svg`) is a 3×3 block of exam-hall desks with one filled in: your seat.
 
 ---
 
