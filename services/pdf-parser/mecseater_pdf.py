@@ -72,7 +72,7 @@ def parse_pdf(pdf_path):
 
             # KTU seating PDFs commonly put the room number on the same
             # line ("ROOM 107"); older layouts put it on the next line.
-            room_match = re.fullmatch(r"ROOM\\s+(.+)", line, re.IGNORECASE)
+            room_match = re.fullmatch(r"ROOM\s+(.+)", line, re.IGNORECASE)
             if room_match:
                 current_room = room_match.group(1).strip()
                 index += 1
