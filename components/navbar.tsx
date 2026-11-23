@@ -30,7 +30,9 @@ export function Navbar() {
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'inline-flex h-9 items-center rounded-md px-3 text-sm transition-colors',
-                  isActive ? 'text-text' : 'text-text-secondary hover:text-text',
+                  isActive
+                    ? 'text-text underline decoration-primary decoration-2 underline-offset-[6px]'
+                    : 'text-text-secondary hover:text-text',
                 )}
               >
                 {item.label}

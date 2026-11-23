@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
 export function Card({ className, ...props }: DivProps): React.JSX.Element {
-  return <div className={cn('rounded-lg border border-border bg-surface p-5 text-text sm:p-6', className)} {...props} />;
+  return <div className={cn('rounded-[5px] border border-border bg-surface p-5 text-text sm:p-6', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: DivProps): React.JSX.Element {

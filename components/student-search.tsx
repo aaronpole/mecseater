@@ -21,21 +21,32 @@ type SearchState =
   | { readonly kind: 'error'; readonly term: string; readonly message: string };
 
 /**
- * Room and seat values range from "7" to "Seminar Hall". Step the size down with length so
- * the figure stays as large as possible without breaking mid-word on a 320px phone.
+ * Rooms are usually three digits ("107") and seats "A01", but a hall can be named
+ * ("Seminar Hall"). Step the condensed figure down with length so it stays as large
+ * as possible without breaking mid-word on a 320px phone.
  */
 const SHORT_FIGURE_LENGTH = 4;
 const MEDIUM_FIGURE_LENGTH = 7;
 const FIGURE_SIZES: ReadonlyArray<{ readonly maxLength: number; readonly className: string }> = [
-  { maxLength: SHORT_FIGURE_LENGTH, className: 'text-5xl sm:text-6xl' },
-  { maxLength: MEDIUM_FIGURE_LENGTH, className: 'text-4xl sm:text-5xl' },
-  { maxLength: Number.POSITIVE_INFINITY, className: 'text-2xl sm:text-3xl' },
+  { maxLength: SHORT_FIGURE_LENGTH, className: 'text-[clamp(4rem,21vw,5.5rem)]/[0.85] sm:text-[7.5rem]/[0.85]' },
+  { maxLength: MEDIUM_FIGURE_LENGTH, className: 'text-[clamp(2.5rem,12vw,3.25rem)]/[0.9] sm:text-[4.5rem]/[0.9]' },
+  { maxLength: Number.POSITIVE_INFINITY, className: 'text-[2.25rem]/[1] sm:text-[2.75rem]/[1]' },
 ];
+const PLACEHOLDER = '—';
+const SKELETON_CELLS = 10;
 
 function figureSize(value: string): string {
   return FIGURE_SIZES.find((size) => value.length <= size.maxLength)?.className ?? '';
 }
-const PLACEHOLDER = '—';
+
+/** Seating PDFs print names in capitals; "RUKSANA M A" reads better as "Ruksana M A". */
+function toTitleCase(name: string): string {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 export function StudentSearch(): React.JSX.Element {
   const [query, setQuery] = useState('');
@@ -67,15 +78,19 @@ export function StudentSearch(): React.JSX.Element {
 
   return (
     <div>
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find your exam seat</h1>
-      <p className="mt-2 text-text-secondary">Enter your roll number or name to see your room and seat.</p>
+      <h1 className="text-balance font-semicondensed text-[2.75rem]/[0.95] font-bold tracking-[-0.025em] sm:text-[4rem]/[0.95]">
+        Find your exam seat
+      </h1>
+      <p className="mt-4 max-w-[42ch] text-[1.0625rem] leading-relaxed text-text-secondary">
+        Enter your roll number or name. You&rsquo;ll get your room and seat number.
+      </p>
 
       <form role="search" onSubmit={handleSubmit} className="mt-8">
         <label htmlFor="seat-query" className="sr-only">
           Roll number or name
         </label>
         <div className="flex gap-2">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <input
               ref={inputRef}
               id="seat-query"
@@ -83,12 +98,12 @@ export function StudentSearch(): React.JSX.Element {
               enterKeyHint="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="e.g. MDL24CS001"
+              placeholder="MDL24CS001"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="h-14 w-full rounded-lg border border-border-strong bg-surface pl-4 pr-12 text-lg text-text outline-none transition-colors placeholder:text-muted hover:border-text-secondary focus-visible:border-primary focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
+              className="h-14 w-full rounded-md border-[1.5px] border-border-strong bg-surface pl-4 pr-12 text-lg text-text outline-none transition-[border-color,box-shadow] placeholder:text-muted hover:border-text-secondary focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary)_18%,transparent)] focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
             {query.length > 0 && (
               <button
@@ -101,13 +116,11 @@ export function StudentSearch(): React.JSX.Element {
               </button>
             )}
           </div>
-          <Button type="submit" disabled={isLoading || !query.trim()} className="h-14 w-24 shrink-0 rounded-lg text-base sm:w-28">
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-label="Searching" /> : 'Search'}
+          <Button type="submit" disabled={isLoading || !query.trim()} className="h-14 shrink-0 rounded-md px-5 text-base">
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-label="Finding seat" /> : 'Find seat'}
           </Button>
         </div>
-        <p className="mt-3 text-sm text-muted">
-          Use your full roll number for an exact match. Part of a name works too.
-        </p>
+        <p className="mt-3 text-sm text-muted">A full roll number gives one exact match. Part of a name works too.</p>
       </form>
 
       <div aria-live="polite" aria-busy={isLoading} className="mt-10">
@@ -123,11 +136,11 @@ type OutcomeRenderers = {
 
 const outcomeRenderers: OutcomeRenderers = {
   idle: () => null,
-  loading: () => <ResultSkeleton />,
+  loading: () => <SeatSheetSkeleton />,
   error: (state) => (
     <Alert variant="error">
       <p className="font-medium">Search didn&rsquo;t go through</p>
-      <p className="mt-0.5 text-danger/80">{state.message}</p>
+      <p className="mt-0.5 opacity-85">{state.message}</p>
     </Alert>
   ),
   done: (state) =>
@@ -152,14 +165,14 @@ function ResultList({ results }: { readonly results: readonly SearchResult[] }):
   return (
     <section aria-label="Seat results">
       {results.length > 1 && (
-        <p className="mb-3 text-sm text-text-secondary">
-          {results.length} students match. Find your roll number below.
+        <p className="mb-4 text-sm text-text-secondary">
+          {results.length} students match. Look for your roll number.
         </p>
       )}
-      <ul className="space-y-4">
+      <ul className="space-y-5">
         {results.map((result, index) => (
           <li key={`${result.roll_no}-${result.seat_no}-${index}`}>
-            <SeatCard result={result} />
+            <SeatSheet result={result} />
           </li>
         ))}
       </ul>
@@ -167,18 +180,41 @@ function ResultList({ results }: { readonly results: readonly SearchResult[] }):
   );
 }
 
-function SeatCard({ result }: { readonly result: SearchResult }): React.JSX.Element {
+/** One student's allocation, laid out like the front of an answer booklet. */
+function SeatSheet({ result }: { readonly result: SearchResult }): React.JSX.Element {
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-surface">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 pb-4 pt-5">
-        <h2 className="min-w-0 break-words text-lg font-medium leading-snug">{result.name || 'Unnamed student'}</h2>
-        <p className="font-mono text-sm text-text-secondary">{result.roll_no || PLACEHOLDER}</p>
+    <article className="rounded-[5px] border border-border bg-surface">
+      <header className="px-5 pb-5 pt-5 sm:px-6">
+        <h2 className="text-[1.1875rem] font-semibold leading-snug">
+          {result.name ? toTitleCase(result.name) : 'Unnamed student'}
+        </h2>
+        <RegisterNumber value={result.roll_no} />
       </header>
       <dl className="grid grid-cols-2 border-t border-border">
         <SeatFigure label="Room" value={result.room_no} />
         <SeatFigure label="Seat" value={result.seat_no} className="border-l border-border" />
       </dl>
     </article>
+  );
+}
+
+/** The roll number written into register-number boxes, one character per box, in pen blue. */
+function RegisterNumber({ value }: { readonly value: string }): React.JSX.Element {
+  const characters = Array.from(value || PLACEHOLDER);
+  return (
+    <p className="mt-3">
+      <span className="sr-only">Roll number {value || 'not available'}</span>
+      <span aria-hidden="true" className="inline-flex rounded-[3px] border border-border-strong">
+        {characters.map((character, index) => (
+          <span
+            key={index}
+            className="flex h-9 w-[clamp(1rem,5.2vw,1.75rem)] items-center justify-center border-l border-border text-[0.9375rem] font-medium text-primary first:border-l-0 sm:text-[1.0625rem]"
+          >
+            {character}
+          </span>
+        ))}
+      </span>
+    </p>
   );
 }
 
@@ -193,10 +229,13 @@ function SeatFigure({
 }): React.JSX.Element {
   const display = value || PLACEHOLDER;
   return (
-    <div className={cn('min-w-0 px-5 py-4 sm:py-5', className)}>
+    <div className={cn('min-w-0 px-5 pb-5 pt-4 sm:px-6', className)}>
       <dt className="text-sm text-text-secondary">{label}</dt>
       <dd
-        className={cn('mt-2 break-words font-semibold leading-none tracking-tight tabular-nums', figureSize(display))}
+        className={cn(
+          'mt-3 break-words font-condensed font-extrabold tracking-[-0.01em] tabular-nums',
+          figureSize(display),
+        )}
       >
         {display}
       </dd>
@@ -204,21 +243,25 @@ function SeatFigure({
   );
 }
 
-function ResultSkeleton(): React.JSX.Element {
+function SeatSheetSkeleton(): React.JSX.Element {
   return (
-    <div aria-hidden="true" className="overflow-hidden rounded-xl border border-border bg-surface">
-      <div className="flex items-center justify-between px-5 pb-4 pt-5">
+    <div aria-hidden="true" className="rounded-[5px] border border-border bg-surface">
+      <div className="px-5 pb-5 pt-5 sm:px-6">
         <div className="h-5 w-44 animate-pulse rounded bg-surface-hover" />
-        <div className="h-4 w-24 animate-pulse rounded bg-surface-elevated" />
+        <div className="mt-4 inline-flex rounded-[3px] border border-border">
+          {Array.from({ length: SKELETON_CELLS }, (_, index) => (
+            <span key={index} className="h-9 w-[clamp(1rem,5.2vw,1.75rem)] border-l border-border first:border-l-0" />
+          ))}
+        </div>
       </div>
       <div className="grid grid-cols-2 border-t border-border">
-        <div className="space-y-3 px-5 py-5">
+        <div className="px-5 pb-5 pt-4 sm:px-6">
           <div className="h-3.5 w-12 animate-pulse rounded bg-surface-elevated" />
-          <div className="h-12 w-20 animate-pulse rounded bg-surface-hover" />
+          <div className="mt-3 h-[4.5rem] w-24 animate-pulse rounded bg-surface-hover sm:h-24" />
         </div>
-        <div className="space-y-3 border-l border-border px-5 py-5">
+        <div className="border-l border-border px-5 pb-5 pt-4 sm:px-6">
           <div className="h-3.5 w-10 animate-pulse rounded bg-surface-elevated" />
-          <div className="h-12 w-16 animate-pulse rounded bg-surface-hover" />
+          <div className="mt-3 h-[4.5rem] w-20 animate-pulse rounded bg-surface-hover sm:h-24" />
         </div>
       </div>
     </div>

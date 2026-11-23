@@ -18,6 +18,14 @@ type Arrangement = {
 const BYTES_PER_KB = 1024;
 const PDF_MIME_TYPE = 'application/pdf';
 
+/** KTU headings use FN/AN for the forenoon and afternoon sessions. */
+const SESSION_NAMES: Readonly<Record<string, string>> = { FN: 'Forenoon (FN)', AN: 'Afternoon (AN)' };
+
+function describeSlot(slot: string | null): string {
+  if (!slot) return '—';
+  return SESSION_NAMES[slot.toUpperCase()] ?? slot;
+}
+
 function formatFileSize(bytes: number): string {
   const kilobytes = bytes / BYTES_PER_KB;
   return kilobytes >= BYTES_PER_KB ? `${(kilobytes / BYTES_PER_KB).toFixed(1)} MB` : `${kilobytes.toFixed(0)} KB`;
@@ -179,8 +187,8 @@ export function UploadManager({
   if (!isLoggedIn) {
     return (
       <div className="mx-auto w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
-        <p className="mt-2 text-sm text-text-secondary">
+        <h1 className="font-semicondensed text-[2rem]/[1] font-bold tracking-[-0.02em]">Admin sign in</h1>
+        <p className="mt-3 text-sm text-text-secondary">
           For exam cell staff publishing seating PDFs. Students don&rsquo;t need an account.
         </p>
 
@@ -228,8 +236,8 @@ export function UploadManager({
     <div>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Seating arrangement</h1>
-          <p className="mt-2 text-sm text-text-secondary">
+          <h1 className="font-semicondensed text-[2rem]/[1] font-bold tracking-[-0.02em] sm:text-[2.5rem]/[1]">Seating arrangement</h1>
+          <p className="mt-3 text-sm text-text-secondary">
             Students only see the arrangement that&rsquo;s live. Uploading a PDF replaces it.
           </p>
         </div>
@@ -244,10 +252,10 @@ export function UploadManager({
         </h2>
 
         {arrangement ? (
-          <div className="mt-3 rounded-xl border border-border bg-surface">
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-t-xl bg-border sm:grid-cols-4">
+          <div className="mt-3 rounded-[5px] border border-border bg-surface">
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-t-[5px] bg-border sm:grid-cols-4">
               <Fact label="Exam date" value={arrangement.exam_date || '—'} />
-              <Fact label="Slot" value={arrangement.slot || '—'} />
+              <Fact label="Slot" value={describeSlot(arrangement.slot)} />
               <Fact label="Students" value={arrangement.student_count.toLocaleString()} />
               <Fact label="Source PDF" value={arrangement.pdf_name || '—'} truncate />
             </dl>
@@ -259,7 +267,7 @@ export function UploadManager({
             </div>
           </div>
         ) : (
-          <p className="mt-3 rounded-xl border border-dashed border-border-strong px-5 py-6 text-sm text-text-secondary">
+          <p className="mt-3 rounded-[5px] border border-dashed border-border-strong px-5 py-6 text-sm text-text-secondary">
             Nothing is published. Students will get no results until you upload a seating PDF.
           </p>
         )}
@@ -291,8 +299,8 @@ export function UploadManager({
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={cn(
-              'flex cursor-pointer items-center gap-4 rounded-xl border border-dashed px-5 py-6 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary',
-              isDragging ? 'border-primary bg-surface' : 'border-border-strong hover:border-text-secondary',
+              'flex cursor-pointer items-center gap-4 rounded-[5px] border border-dashed px-5 py-6 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary',
+              isDragging ? 'border-primary bg-surface' : 'border-border-strong bg-surface/50 hover:border-text-secondary',
             )}
           >
             {file ? (

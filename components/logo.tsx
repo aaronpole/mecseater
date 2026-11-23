@@ -8,6 +8,7 @@ const DESK_SIZE = 6;
 const DESK_RADIUS = 1.25;
 const DESK_STROKE = 1.5;
 const EMPTY_DESK_OPACITY = 0.45;
+const YOUR_SEAT_COLOR = 'var(--color-primary)';
 const LAST_INDEX = GRID_SIZE - 1;
 const MIDDLE_INDEX = Math.floor(GRID_SIZE / GRID_INDEX_HALVES);
 /** Right column, middle row: the one desk that is yours. */
@@ -27,7 +28,7 @@ const DESKS: readonly Desk[] = GRID_INDICES.flatMap((row) =>
 
 /**
  * MECSeater mark: a 3×3 block of exam-hall desks with one desk filled in.
- * The filled desk is "your seat". Drawn on a 24-unit grid so it stays crisp at 16px.
+ * The filled desk, in pen blue, is "your seat". Drawn on a 24-unit grid so it stays crisp at 16px.
  */
 export function LogoMark({ className }: { readonly className?: string }): React.JSX.Element {
   return (
@@ -40,8 +41,8 @@ export function LogoMark({ className }: { readonly className?: string }): React.
           width={DESK_SIZE}
           height={DESK_SIZE}
           rx={DESK_RADIUS}
-          fill={desk.isYourSeat ? 'currentColor' : 'none'}
-          stroke="currentColor"
+          fill={desk.isYourSeat ? YOUR_SEAT_COLOR : 'none'}
+          stroke={desk.isYourSeat ? YOUR_SEAT_COLOR : 'currentColor'}
           strokeOpacity={desk.isYourSeat ? 1 : EMPTY_DESK_OPACITY}
           strokeWidth={DESK_STROKE}
         />
@@ -54,7 +55,7 @@ export function Logo({ className }: { readonly className?: string }): React.JSX.
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoMark className="h-[22px] w-[22px]" />
-      <span className="text-[15px] font-semibold tracking-tight">MECSeater</span>
+      <span className="font-semicondensed text-[17px] font-bold tracking-tight">MECSeater</span>
     </span>
   );
 }
