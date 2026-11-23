@@ -34,7 +34,7 @@
   * Fluid keyboard navigation and instant input clear controls.
 * **Paper-and-Pen Interface**:
   * Light paper theme by default, since it reads better on a phone in daylight; dark theme follows the system setting.
-  * One accent, ballpoint blue, for the student's own data and for actions. The roll number is shown in register-number boxes like an answer-booklet cover.
+  * The search sits on a ruled answer sheet with a red margin rule. Below it, a booklet-cover form (name, register-number boxes, room, seat) fills in with the student's details in ballpoint blue, the only accent colour.
   * Archivo (self-hosted via `next/font`, no third-party request at runtime), with its condensed width used for the room and seat figures.
 * **Accessible & Motion-Conscious**:
   * Text meets WCAG AA contrast; primary text and figures are white on near-black.

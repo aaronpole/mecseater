@@ -25,6 +25,8 @@
   --color-success: #17663a;
   --color-success-border: #b9dfc6;
   --color-success-surface: #eff8f1;
+  --color-rule: #e2e7f1;
+  --color-margin: #eeb4b0;
   --font-sans: var(--font-archivo), Helvetica, Arial, sans-serif;
 }
 
@@ -54,6 +56,8 @@
     --color-success: #8fd8a8;
     --color-success-border: #1f4a30;
     --color-success-surface: #0f1d15;
+    --color-rule: #1d2331;
+    --color-margin: #5b2d31;
   }
 }
 
@@ -64,6 +68,51 @@
 
 @utility font-semicondensed {
   font-stretch: 87.5%;
+}
+
+/*
+ * An answer-booklet page: faint ruled lines with a red margin rule.
+ * Content inside should start right of --sheet-margin.
+ */
+.answer-sheet {
+  --sheet-margin: 1.75rem;
+  --rule-gap: 2rem;
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(
+      to right,
+      transparent calc(var(--sheet-margin) - 1px),
+      var(--color-margin) calc(var(--sheet-margin) - 1px),
+      var(--color-margin) var(--sheet-margin),
+      transparent var(--sheet-margin)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--rule-gap) - 1px),
+      var(--color-rule) calc(var(--rule-gap) - 1px),
+      var(--color-rule) var(--rule-gap)
+    );
+}
+
+@media (min-width: 640px) {
+  .answer-sheet {
+    --sheet-margin: 4rem;
+  }
+}
+
+/* Pen-written reveal for the student's details as they fill the form. */
+@keyframes write-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@utility animate-write-in {
+  animation: write-in 520ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
 }
 
 html {
