@@ -11,7 +11,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_Serverless-black?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Python](https://img.shields.io/badge/Python-FastAPI_Parser-black?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 
-[Features](#key-features) • [Design System](#monochrome-design-system) • [Architecture](#architecture) • [Getting Started](#getting-started) • [Configuration](#configuration) • [Commands](#available-commands)
+[Features](#key-features) • [Design System](#design-system) • [Architecture](#architecture) • [Getting Started](#getting-started) • [Configuration](#configuration) • [Commands](#available-commands)
 
 </div>
 
@@ -29,15 +29,15 @@
 ## Key Features
 
 * **Instant Search with High Glanceability**:
-  * Emphasized, prominent **Room Number** badges engineered for rapid scanning in crowded corridors.
+  * Room and seat shown as large figures side by side, readable at a glance in a crowded corridor.
   * Clear pairing of student name, roll number, and desk/seat allocation.
   * Fluid keyboard navigation and instant input clear controls.
-* **Monochrome Minimalist Interface**:
-  * High-contrast black-and-white theme (`#090909` background, `#111111` surfaces, crisp white typography).
-  * Helvetica typography stack (`Helvetica, Arial, sans-serif`) with zero third-party font bloat.
-  * Restrained borders, no garish gradients, and strictly no decorative clutter.
+* **Paper-and-Pen Interface**:
+  * Light paper theme by default, since it reads better on a phone in daylight; dark theme follows the system setting.
+  * The search sits on a ruled answer sheet with a red margin rule. Below it, a booklet-cover form (name, register-number boxes, room, seat) fills in with the student's details in ballpoint blue, the only accent colour.
+  * Archivo (self-hosted via `next/font`, no third-party request at runtime), with its condensed width used for the room and seat figures.
 * **Accessible & Motion-Conscious**:
-  * High-contrast ratios exceeding WCAG AAA standards.
+  * Text meets WCAG AA contrast; primary text and figures are white on near-black.
   * Visible keyboard focus rings (`:focus-visible`).
   * Built-in support for `prefers-reduced-motion` to disable animations for sensitive users.
 * **Resilient Responsive Layout**:
@@ -52,18 +52,27 @@
 
 ---
 
-## Monochrome Design System
+## Design System
 
-| Token | Value | Role |
-| --- | --- | --- |
-| `--color-background` | `#090909` | Deep near-black background |
-| `--color-surface` | `#111111` | Primary cards & search console surface |
-| `--color-surface-elevated` | `#191919` | Elevated badges, metric tiles & room blocks |
-| `--color-primary` | `#FFFFFF` | Primary actions, headings & highlighted data |
-| `--color-text-secondary` | `#A3A3A3` | Metadata, roll numbers & descriptions |
-| `--color-muted` | `#737373` | Form placeholders, subtle labels & timestamps |
-| `--color-border` | `#262626` | Restrained 1px component borders |
-| `--font-sans` | `Helvetica, Arial, sans-serif` | Clean Swiss modernist typography stack |
+Light values shown; `app/globals.css` redefines each token for dark mode.
+
+| Token | Light | Dark | Role |
+| --- | --- | --- | --- |
+| `--color-background` | `#F3F4F1` | `#0E1117` | Paper |
+| `--color-surface` | `#FFFFFF` | `#161A22` | Seat sheets, inputs & panels |
+| `--color-text` | `#14171F` | `#ECEEF3` | Ink: headings, names, room and seat figures |
+| `--color-text-secondary` | `#4E5566` | `#A2A9B8` | Labels & descriptions |
+| `--color-muted` | `#646B7B` | `#8A91A1` | Placeholders & hints (≥ 4.5:1 on paper) |
+| `--color-border` | `#D6D9DF` | `#2A303C` | Form rules |
+| `--color-primary` | `#2340A8` | `#8EA6FF` | Ballpoint blue: roll number, actions, focus |
+| `--color-danger` / `--color-success` | `#B42318` / `#17663A` | `#F4A49B` / `#8FD8A8` | Errors and confirmations, with `-border` and `-surface` tokens |
+| `--font-sans` | Archivo | | Interface; `font-condensed` and `font-semicondensed` use its width axis |
+
+Components use these tokens through Tailwind utilities (`bg-surface`, `text-text-secondary`, `border-border`, …) rather than raw hex values.
+
+### Logo
+
+The mark (`components/logo.tsx`, favicon at `app/icon.svg`) is a 3×3 block of exam-hall desks with one filled in: your seat.
 
 ---
 

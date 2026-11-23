@@ -98,7 +98,7 @@ class KtuPdfRegressionTests(unittest.TestCase):
         result = parse_pdf(self.pdf_path)
 
         self.assertEqual(result["examDate"], "23/11/2026")
-        self.assertIsNone(result["slot"])
+        self.assertEqual(result["slot"], "FN")
         self.assertEqual(
             [(row["rollNo"], row["seatNo"], row["roomNo"]) for row in result["records"]],
             [
@@ -144,6 +144,52 @@ class KtuPdfRegressionTests(unittest.TestCase):
             [
                 ("MDL24EBE049", "A01", "107"),
                 ("LMDL24CSBS067", "A02", "107"),
+            ],
+        )
+
+    def test_reads_forenoon_and_afternoon_slot_after_the_date(self):
+        for heading, expected in (("23-11-2026 Monday AN", "AN"), ("24/11/2026 Tuesday FN", "FN")):
+            with self.subTest(heading=heading):
+                write_pdf(
+                    self.pdf_path,
+                    [heading, "ROOM 107", "1", "A01", "MDL24EBE049", "SYNTHETIC STUDENT ONE", "PCEBT501"],
+                )
+                self.assertEqual(parse_pdf(self.pdf_path)["slot"], expected)
+
+    def test_splits_course_code_off_a_long_name_on_the_same_line(self):
+        # PyMuPDF joins a long name and its course code into one text line.
+        # The next student's row must not be swallowed into that name.
+        write_pdf(
+            self.pdf_path,
+            [
+                "B.Tech S5 (R) Exam Nov 2026 (2024 Scheme)",
+                "23-11-2026 Monday AN",
+                "ROOM 315",
+                "11",
+                "A11",
+                "MDL24CS132",
+                "SYNTHETIC STUDENT ELEVEN",
+                "PCCST501",
+                "12",
+                "A12",
+                "MDL24CS133",
+                "SYNTHETIC STUDENT WITH LONGNAME PCCST501",
+                "13",
+                "A13",
+                "MDL24CS134",
+                "SYNTHETIC STUDENT THIRTEEN",
+                "PCCST501",
+            ],
+        )
+
+        result = parse_pdf(self.pdf_path)
+
+        self.assertEqual(
+            [(row["rollNo"], row["seatNo"], row["name"]) for row in result["records"]],
+            [
+                ("MDL24CS132", "A11", "SYNTHETIC STUDENT ELEVEN"),
+                ("MDL24CS133", "A12", "SYNTHETIC STUDENT WITH LONGNAME"),
+                ("MDL24CS134", "A13", "SYNTHETIC STUDENT THIRTEEN"),
             ],
         )
 

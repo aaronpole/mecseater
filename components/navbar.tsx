@@ -2,52 +2,40 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
-import { Search, Shield } from 'lucide-react';
+
+const navItems = [
+  { href: '/', label: 'Find seat' },
+  { href: '/upload', label: 'Admin' },
+];
 
 export function Navbar() {
   const pathname = usePathname();
 
-  const navItems = [
-    { href: '/', label: 'Search', icon: Search },
-    { href: '/upload', label: 'Admin', icon: Shield },
-  ];
-
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[#262626] bg-[#090909]/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-        <Link
-          href="/"
-          className="group flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded border border-[#333333] bg-[#141414] text-xs font-bold tracking-wider text-white">
-            M
-          </div>
-          <span className="font-sans text-base font-semibold tracking-tight text-white group-hover:text-[#f7f7f7]">
-            MECSeater
-          </span>
-          <span className="hidden text-[10px] font-mono uppercase tracking-widest text-[#737373] sm:inline-block">
-            Seating Directory
-          </span>
+    <header className="border-b border-border-subtle">
+      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="flex items-center rounded-sm text-text" aria-label="MECSeater home">
+          <Logo />
         </Link>
 
-        <nav aria-label="Main Navigation" className="flex items-center gap-1 sm:gap-2">
+        <nav aria-label="Main" className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
-            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs sm:text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+                  'inline-flex h-9 items-center rounded-md px-3 text-sm transition-colors',
                   isActive
-                    ? 'border border-[#383838] bg-[#191919] text-white'
-                    : 'text-[#a3a3a3] hover:bg-[#141414] hover:text-white',
+                    ? 'text-text underline decoration-primary decoration-2 underline-offset-[6px]'
+                    : 'text-text-secondary hover:text-text',
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{item.label}</span>
+                {item.label}
               </Link>
             );
           })}
@@ -56,4 +44,3 @@ export function Navbar() {
     </header>
   );
 }
-

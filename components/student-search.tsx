@@ -1,254 +1,328 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { FormEvent, useRef, useState } from 'react';
+import { Loader2, X } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { readSearchResponse } from '@/lib/search/response';
-import { Search, Loader2, AlertCircle, X, MapPin } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type SearchResult = {
-  name: string;
-  roll_no: string;
-  room_no: string;
-  seat_no: string;
+  readonly name: string;
+  readonly roll_no: string;
+  readonly room_no: string;
+  readonly seat_no: string;
 };
 
-export function StudentSearch() {
+type SearchState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'loading'; readonly term: string }
+  | { readonly kind: 'done'; readonly term: string; readonly results: readonly SearchResult[] }
+  | { readonly kind: 'error'; readonly term: string; readonly message: string };
+
+/**
+ * Rooms are usually three digits ("107") and seats "A01", but a hall can be named
+ * ("Seminar Hall"). Step the condensed figure down with length so it stays as large
+ * as possible without breaking mid-word on a 320px phone.
+ */
+const SHORT_FIGURE_LENGTH = 4;
+const MEDIUM_FIGURE_LENGTH = 7;
+const FIGURE_SIZES: ReadonlyArray<{ readonly maxLength: number; readonly className: string }> = [
+  { maxLength: SHORT_FIGURE_LENGTH, className: 'text-[clamp(4rem,21vw,5.5rem)]/[0.85] sm:text-[7.5rem]/[0.85]' },
+  { maxLength: MEDIUM_FIGURE_LENGTH, className: 'text-[clamp(2.5rem,12vw,3.25rem)]/[0.9] sm:text-[4.5rem]/[0.9]' },
+  { maxLength: Number.POSITIVE_INFINITY, className: 'text-[2.25rem]/[1] sm:text-[2.75rem]/[1]' },
+];
+const BLANK_REGISTER_BOXES = 12;
+
+/** The form fills in top to bottom, like writing on the booklet cover. */
+const WRITE_STEP_MS = 160;
+const WRITE_ORDER = ['name', 'register', 'room', 'seat'] as const;
+const WRITE_DELAY_MS = Object.fromEntries(WRITE_ORDER.map((field, step) => [field, step * WRITE_STEP_MS])) as Readonly<
+  Record<(typeof WRITE_ORDER)[number], number>
+>;
+
+function figureSize(value: string): string {
+  return FIGURE_SIZES.find((size) => value.length <= size.maxLength)?.className ?? '';
+}
+
+/** Seating PDFs print names in capitals; "RUKSANA M A" reads better as "Ruksana M A". */
+function toTitleCase(name: string): string {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+export function StudentSearch(): React.JSX.Element {
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [state, setState] = useState<SearchState>({ kind: 'idle' });
+  const [pickedIndex, setPickedIndex] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    const cleaned = query.trim();
-    if (!cleaned) return;
+    const term = query.trim();
+    if (!term) return;
 
-    setLoading(true);
-    setMessage(null);
-    setHasSearched(true);
-
+    setPickedIndex(null);
+    setState({ kind: 'loading', term });
     try {
-      const response = await fetch(`/api/search?query=${encodeURIComponent(cleaned)}`);
-      const searchResults = await readSearchResponse(response);
-      setResults(searchResults);
-      if (!searchResults.length) {
-        setMessage('No results found for the provided search.');
-      }
+      const response = await fetch(`/api/search?query=${encodeURIComponent(term)}`);
+      const results = await readSearchResponse(response);
+      setState({ kind: 'done', term, results });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Search failed.');
-      setResults([]);
-    } finally {
-      setLoading(false);
+      setState({ kind: 'error', term, message: error instanceof Error ? error.message : 'Search failed.' });
     }
   }
 
-  function handleClear() {
+  function handleClear(): void {
     setQuery('');
-    setResults([]);
-    setMessage(null);
-    setHasSearched(false);
+    setPickedIndex(null);
+    setState({ kind: 'idle' });
+    inputRef.current?.focus();
   }
 
-  const isNoResults = !loading && hasSearched && results.length === 0 && message === 'No results found for the provided search.';
-  const isError = !loading && message && message !== 'No results found for the provided search.';
+  const isLoading = state.kind === 'loading';
+  const results = state.kind === 'done' ? state.results : [];
+  const onlyResult = results.length === 1 ? results[0] : null;
+  const pickedResult = pickedIndex === null ? null : results[pickedIndex] ?? null;
+  const shownResult = onlyResult ?? pickedResult;
 
   return (
-    <div className="w-full space-y-8">
-      {/* Visual Focus: Header / Headline */}
-      <section className="space-y-3 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#262626] bg-[#121212] px-3 py-1 text-xs font-mono tracking-wider text-[#a3a3a3] uppercase">
-          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-          Examination Seating Directory
-        </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white font-sans">
-          Find Your Exam Seat
+    <article className="answer-sheet overflow-hidden rounded-[5px] border border-border">
+      <div className="pb-10 pl-[calc(var(--sheet-margin)+1rem)] pr-4 pt-8 sm:pb-14 sm:pl-[calc(var(--sheet-margin)+2rem)] sm:pr-12 sm:pt-12">
+        <h1 className="text-balance font-semicondensed text-[2.75rem]/[0.95] font-bold tracking-[-0.025em] sm:text-[4rem]/[0.95]">
+          Find your exam seat
         </h1>
-        <p className="text-sm sm:text-base text-[#a3a3a3] max-w-2xl leading-relaxed">
-          Search by student name or roll number to look up your allocated examination room, hall, and seat number.
+        <p className="mt-4 max-w-[42ch] text-[1.0625rem] leading-relaxed text-text-secondary">
+          Enter your roll number or name. Your room and seat fill in below.
         </p>
-      </section>
 
-      {/* Search Console Form */}
-      <Card className="border-[#262626] bg-[#111111] p-4 sm:p-5">
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-            <Input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Enter student name or roll number (e.g. 24ME001)"
-              aria-label="Search student seat"
-              className="h-12 pl-10 pr-10 text-sm sm:text-base bg-[#090909] border-[#262626] focus-visible:border-white focus-visible:ring-1 focus-visible:ring-white"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck="false"
-            />
-            {query.trim().length > 0 && (
+        <form role="search" onSubmit={handleSubmit} className="mt-8">
+          <label htmlFor="seat-query" className="sr-only">
+            Roll number or name
+          </label>
+          <div className="flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <input
+                ref={inputRef}
+                id="seat-query"
+                type="search"
+                enterKeyHint="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="MDL24CS001"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="h-14 w-full rounded-md border-[1.5px] border-border-strong bg-surface pl-3.5 pr-11 text-base text-text sm:pl-4 sm:pr-12 sm:text-lg outline-none transition-[border-color,box-shadow] placeholder:text-muted hover:border-text-secondary focus-visible:border-primary focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary)_18%,transparent)] focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
+              />
+              {query.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors hover:text-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Button type="submit" disabled={isLoading || !query.trim()} className="h-14 shrink-0 rounded-md px-4 text-base sm:px-5">
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-label="Finding seat" /> : 'Find seat'}
+            </Button>
+          </div>
+          <p className="mt-3 text-sm text-muted">A full roll number gives one exact match. Part of a name works too.</p>
+        </form>
+
+        <div aria-live="polite" aria-busy={isLoading}>
+          <SearchMessage state={state} />
+          {results.length > 1 && (
+            <MatchPicker results={results} pickedIndex={pickedIndex} onPick={setPickedIndex} term={query.trim()} />
+          )}
+          <SeatForm key={shownResult ? `${shownResult.roll_no}-${shownResult.seat_no}` : 'blank'} result={shownResult} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+type MessageRenderers = {
+  readonly [Kind in SearchState['kind']]: (state: Extract<SearchState, { kind: Kind }>) => React.JSX.Element | null;
+};
+
+const messageRenderers: MessageRenderers = {
+  idle: () => null,
+  loading: () => null,
+  error: (state) => (
+    <Alert variant="error" className="mt-8">
+      <p className="font-medium">Search didn&rsquo;t go through</p>
+      <p className="mt-0.5 opacity-85">{state.message}</p>
+    </Alert>
+  ),
+  done: (state) =>
+    state.results.length === 0 ? (
+      <div className="mt-8 border-l-2 border-danger pl-4">
+        <p className="font-medium">No seat found for &ldquo;{state.term}&rdquo;</p>
+        <p className="mt-1 text-sm text-text-secondary">
+          Check the spelling, or search with your full roll number instead.
+        </p>
+      </div>
+    ) : null,
+};
+
+function SearchMessage({ state }: { readonly state: SearchState }): React.JSX.Element | null {
+  const render = messageRenderers[state.kind] as (current: SearchState) => React.JSX.Element | null;
+  return render(state);
+}
+
+function MatchPicker({
+  results,
+  pickedIndex,
+  onPick,
+  term,
+}: {
+  readonly results: readonly SearchResult[];
+  readonly pickedIndex: number | null;
+  readonly onPick: (index: number) => void;
+  readonly term: string;
+}): React.JSX.Element {
+  return (
+    <section aria-labelledby="matches-heading" className="mt-8">
+      <h2 id="matches-heading" className="text-sm text-text-secondary">
+        {results.length} students match &ldquo;{term}&rdquo;. Pick yours.
+      </h2>
+      <ul className="mt-2 border-t border-border">
+        {results.map((result, index) => {
+          const isPicked = index === pickedIndex;
+          return (
+            <li key={`${result.roll_no}-${result.seat_no}-${index}`} className="border-b border-border">
               <button
                 type="button"
-                onClick={handleClear}
-                aria-label="Clear search input"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm p-1 text-[#737373] hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white"
+                aria-pressed={isPicked}
+                onClick={() => onPick(index)}
+                className={cn(
+                  'flex min-h-12 w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-3 text-left transition-colors',
+                  isPicked ? 'text-primary' : 'text-text hover:text-primary',
+                )}
               >
-                <X className="h-4 w-4" />
+                <span className="font-medium">{result.name ? toTitleCase(result.name) : 'Unnamed student'}</span>
+                <span className="text-sm tabular-nums text-text-secondary">{result.roll_no}</span>
               </button>
-            )}
-          </div>
-          <Button
-            type="submit"
-            disabled={loading || !query.trim()}
-            variant="default"
-            className="h-12 px-6 sm:w-auto w-full min-w-[120px] font-semibold text-sm shrink-0"
-          >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Searching...
-              </span>
-            ) : (
-              'Search'
-            )}
-          </Button>
-        </form>
-      </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
-      {/* Results / Feedback Section */}
-      <div className="space-y-4">
-        {/* Loading State */}
-        {loading && (
-          <div className="space-y-3" role="status" aria-busy="true">
-            <div className="flex items-center gap-2 text-xs font-mono text-[#a3a3a3] px-1">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-              <span>Querying seating arrangements...</span>
-            </div>
-            <div className="space-y-3">
-              {[1, 2].map((placeholder) => (
-                <div
-                  key={placeholder}
-                  className="rounded-lg border border-[#262626] bg-[#111111] p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="h-16 w-24 rounded-md bg-[#191919] animate-pulse" />
-                    <div className="space-y-2 flex-1 sm:w-48">
-                      <div className="h-5 w-36 rounded bg-[#1c1c1c] animate-pulse" />
-                      <div className="h-4 w-24 rounded bg-[#181818] animate-pulse" />
-                    </div>
-                  </div>
-                  <div className="h-9 w-28 rounded-md bg-[#191919] animate-pulse self-end sm:self-auto" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {isError && (
-          <Alert variant="error" className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-[#fca5a5] shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold text-[#fca5a5]">Search Request Failed</p>
-              <p className="text-xs text-[#fecaca] leading-relaxed">{message}</p>
-            </div>
-          </Alert>
-        )}
-
-        {/* No Results State */}
-        {isNoResults && (
-          <div className="rounded-lg border border-[#262626] bg-[#111111] p-8 text-center space-y-3">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-[#333333] bg-[#161616] text-[#a3a3a3]">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-base font-semibold text-white">No Results Found</h2>
-              <p className="mx-auto max-w-md text-xs sm:text-sm text-[#a3a3a3] leading-relaxed">
-                No matching seating allocation was found for &ldquo;<span className="text-white font-medium">{query.trim()}</span>&rdquo;. Check the roll number or spelling and try again.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Successful Results: High Scanability Cards */}
-        {!loading && results.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1 text-xs text-[#a3a3a3]">
-              <span className="font-mono">
-                {results.length} {results.length === 1 ? 'record found' : 'records found'}
-              </span>
-              <span className="text-[11px] text-[#737373] hidden sm:inline">
-                Verified from active seating schedule
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              {results.map((result, index) => (
-                <div
-                  key={`${result.roll_no}-${result.seat_no}-${index}`}
-                  className="group rounded-lg border border-[#262626] bg-[#111111] p-4 sm:p-5 transition-colors hover:border-[#383838]"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    {/* Left: Emphasized Room Badge & Student Metadata */}
-                    <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
-                      {/* Prominent Room Block */}
-                      <div className="flex flex-col items-center justify-center rounded-md border border-[#333333] bg-[#191919] px-3.5 py-2.5 min-w-[92px] sm:min-w-[110px] text-center shrink-0">
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-[#a3a3a3]">
-                          Room
-                        </span>
-                        <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-none mt-1">
-                          {result.room_no || '—'}
-                        </span>
-                      </div>
-
-                      {/* Student Identification */}
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <h2
-                          className="text-base sm:text-lg font-bold text-white tracking-tight truncate group-hover:text-[#f7f7f7]"
-                          title={result.name}
-                        >
-                          {result.name || 'Unnamed Student'}
-                        </h2>
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="inline-flex items-center gap-1 rounded bg-[#191919] border border-[#262626] px-2 py-0.5 font-mono text-[#d4d4d4]">
-                            <span className="text-[#737373]">Roll:</span> {result.roll_no || '—'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Seat Allocation Badge */}
-                    <div className="flex items-center justify-between sm:justify-end border-t border-[#1c1c1c] sm:border-0 pt-3 sm:pt-0 shrink-0">
-                      <span className="text-xs text-[#737373] sm:hidden">Seat Number</span>
-                      <div className="inline-flex items-center gap-2 rounded-md border border-[#383838] bg-[#191919] px-3.5 py-2">
-                        <span className="text-xs uppercase tracking-wider text-[#a3a3a3]">Seat</span>
-                        <span className="font-mono text-base sm:text-lg font-bold text-white">
-                          {result.seat_no || '—'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Initial Empty State Guide */}
-        {!loading && !hasSearched && (
-          <div className="rounded-lg border border-[#222222] bg-[#111111]/60 p-6 sm:p-8 text-center space-y-2">
-            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-[#262626] bg-[#141414] text-[#737373]">
-              <MapPin className="h-4 w-4" />
-            </div>
-            <h2 className="text-sm font-medium text-white">Awaiting Search Input</h2>
-            <p className="mx-auto max-w-sm text-xs text-[#737373] leading-relaxed">
-              Type your roll number or name in the box above to look up your allocated hall and desk.
-            </p>
-          </div>
-        )}
+/**
+ * The booklet cover: printed labels in ink, the student's details written in pen blue.
+ * Blank until there is exactly one result to show.
+ */
+function SeatForm({ result }: { readonly result: SearchResult | null }): React.JSX.Element {
+  return (
+    <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-7 sm:mt-12">
+      <div className="col-span-2">
+        <dt className="text-sm text-text-secondary">Name</dt>
+        <dd className="mt-1.5 min-h-8">
+          {result ? (
+            <WrittenIn delayMs={WRITE_DELAY_MS.name} className="text-[1.375rem]/[2rem] font-medium">
+              {result.name ? toTitleCase(result.name) : 'Unnamed student'}
+            </WrittenIn>
+          ) : (
+            <span className="block h-8 max-w-sm border-b-[1.5px] border-dotted border-border-strong" />
+          )}
+        </dd>
       </div>
+
+      <div className="col-span-2">
+        <dt className="text-sm text-text-secondary">Register no.</dt>
+        <dd className="mt-2">
+          <RegisterBoxes value={result?.roll_no ?? ''} />
+        </dd>
+      </div>
+
+      <SeatFigure label="Room" value={result?.room_no ?? null} delayMs={WRITE_DELAY_MS.room} />
+      <SeatFigure label="Seat" value={result?.seat_no ?? null} delayMs={WRITE_DELAY_MS.seat} />
+    </dl>
+  );
+}
+
+function WrittenIn({
+  delayMs,
+  className,
+  children,
+}: {
+  readonly delayMs: number;
+  readonly className?: string;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <span className={cn('inline-block animate-write-in text-primary', className)} style={{ animationDelay: `${delayMs}ms` }}>
+      {children}
+    </span>
+  );
+}
+
+/** Register-number boxes from the answer-booklet cover, one character per box. */
+function RegisterBoxes({ value }: { readonly value: string }): React.JSX.Element {
+  const cells = value ? Array.from(value) : Array.from({ length: BLANK_REGISTER_BOXES }, () => '');
+  return (
+    <>
+      {value && <span className="sr-only">{value}</span>}
+      <span aria-hidden="true" className="inline-flex rounded-[3px] border border-border-strong bg-surface">
+        {cells.map((character, index) => (
+          <span
+            key={index}
+            className="flex h-10 w-[clamp(1rem,4.6vw,1.875rem)] items-center justify-center border-l border-border text-[0.9375rem] font-semibold text-primary first:border-l-0 sm:text-lg"
+          >
+            {character && (
+              <span className="animate-write-in" style={{ animationDelay: `${WRITE_DELAY_MS.register}ms` }}>
+                {character}
+              </span>
+            )}
+          </span>
+        ))}
+      </span>
+    </>
+  );
+}
+
+function SeatFigure({
+  label,
+  value,
+  delayMs,
+}: {
+  readonly label: string;
+  readonly value: string | null;
+  readonly delayMs: number;
+}): React.JSX.Element {
+  return (
+    <div className="min-w-0">
+      <dt className="text-sm text-text-secondary">{label}</dt>
+      <dd className="mt-3">
+        {value === null ? (
+          <span
+            className={cn(
+              'block w-[1.7em] border-b-[3px] border-dotted border-border-strong font-condensed',
+              figureSize(''),
+            )}
+          >
+            &nbsp;
+          </span>
+        ) : (
+          <WrittenIn
+            delayMs={delayMs}
+            className={cn('break-words font-condensed font-extrabold tracking-[-0.01em] tabular-nums', figureSize(value || '—'))}
+          >
+            {value || '—'}
+          </WrittenIn>
+        )}
+      </dd>
     </div>
   );
 }

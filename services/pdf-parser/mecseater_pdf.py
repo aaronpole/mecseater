@@ -86,9 +86,48 @@ def find_exam_date(text):
 
 def find_slot(text, exam_date):
     match = re.search(r"(Slot\s+[^\n]*?)\s+" + re.escape(exam_date) + r"\b", text, re.IGNORECASE)
-    if not match:
-        return None
-    return match.group(1).strip()
+    if match:
+        return match.group(1).strip()
+
+    # KTU headings name the session after the date: "23-11-2026 Monday AN".
+    session = re.search(
+        r"\b\d{2}[/-]\d{2}[/-]\d{4}\s+(?:[A-Za-z]+day\s+)?(FN|AN)\b", text, re.IGNORECASE
+    )
+    if session:
+        return session.group(1).upper()
+    return None
+
+
+def split_trailing_course_code(token):
+    """Split "LONG NAME PCCST501" into ("LONG NAME", "PCCST501").
+
+    PyMuPDF puts a long name and its course code on one text line. Returns
+    (token, None) when the token does not end with a course code.
+    """
+    parts = token.rsplit(None, 1)
+    if len(parts) == 2 and is_course_code(parts[1]):
+        return parts[0], parts[1]
+    return token, None
+
+
+def read_name_and_course_code(lines, start):
+    """Collect name lines from `start` until the course code.
+
+    Returns (name_parts, course_code, index_of_course_code_line).
+    """
+    name_parts = []
+    j = start
+    while j < len(lines):
+        token = lines[j]
+        if is_course_code(token):
+            return name_parts, token, j
+        name_part, course_code = split_trailing_course_code(token)
+        if course_code:
+            name_parts.append(name_part)
+            return name_parts, course_code, j
+        name_parts.append(token)
+        j += 1
+    return name_parts, None, j
 
 
 def parse_pdf(pdf_path):
@@ -148,16 +187,7 @@ def parse_pdf(pdf_path):
                     seat = lines[index + 1]
                     roll = lines[index + 2]
                     if current_room and is_seat_number(seat) and is_roll_number(roll):
-                        name_parts = []
-                        j = index + 3
-                        course_code = None
-                        while j < len(lines):
-                            token = lines[j]
-                            if is_course_code(token):
-                                course_code = token
-                                break
-                            name_parts.append(token)
-                            j += 1
+                        name_parts, course_code, j = read_name_and_course_code(lines, index + 3)
 
                         if course_code and name_parts:
                             name = normalize_name(name_parts)
@@ -175,16 +205,7 @@ def parse_pdf(pdf_path):
                 seat = line
                 roll = lines[index + 1]
                 if is_roll_number(roll):
-                    name_parts = []
-                    j = index + 2
-                    course_code = None
-                    while j < len(lines):
-                        token = lines[j]
-                        if is_course_code(token):
-                            course_code = token
-                            break
-                        name_parts.append(token)
-                        j += 1
+                    name_parts, course_code, j = read_name_and_course_code(lines, index + 2)
 
                     if course_code and name_parts:
                         name = normalize_name(name_parts)

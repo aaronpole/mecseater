@@ -1,55 +1,146 @@
 @import "tailwindcss";
 
+/*
+ * Paper and pen. Light by default because the page is read on a phone outdoors,
+ * minutes before an exam; dark follows the system setting.
+ * The only accent is ballpoint blue, used for the student's own data and for actions.
+ */
 @theme {
-  --color-background: #090909;
-  --color-surface: #111111;
-  --color-surface-elevated: #191919;
-  --color-surface-hover: #222222;
-  --color-primary: #ffffff;
-  --color-primary-hover: #f7f7f7;
-  --color-text: #ffffff;
-  --color-text-secondary: #a3a3a3;
-  --color-muted: #737373;
-  --color-border: #262626;
-  --color-border-subtle: #1c1c1c;
-  --color-border-strong: #383838;
-  --font-sans: Helvetica, Arial, sans-serif;
+  --color-background: #f3f4f1;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #eceeea;
+  --color-surface-hover: #e3e5e0;
+  --color-primary: #2340a8;
+  --color-primary-hover: #1b3290;
+  --color-on-primary: #ffffff;
+  --color-text: #14171f;
+  --color-text-secondary: #4e5566;
+  --color-muted: #646b7b;
+  --color-border: #d6d9df;
+  --color-border-subtle: #e3e5e9;
+  --color-border-strong: #aeb3be;
+  --color-danger: #b42318;
+  --color-danger-border: #f0c2bc;
+  --color-danger-surface: #fdf1ef;
+  --color-success: #17663a;
+  --color-success-border: #b9dfc6;
+  --color-success-surface: #eff8f1;
+  --color-rule: #e2e7f1;
+  --color-margin: #eeb4b0;
+  --font-sans: var(--font-archivo), Helvetica, Arial, sans-serif;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-background: #0e1117;
+    --color-surface: #161a22;
+    --color-surface-elevated: #1d222c;
+    --color-surface-hover: #262c38;
+    --color-primary: #8ea6ff;
+    --color-primary-hover: #a9bbff;
+    --color-on-primary: #0e1117;
+    --color-text: #eceef3;
+    --color-text-secondary: #a2a9b8;
+    --color-muted: #8a91a1;
+    --color-border: #2a303c;
+    --color-border-subtle: #1f242e;
+    --color-border-strong: #454d5e;
+    --color-danger: #f4a49b;
+    --color-danger-border: #5a2620;
+    --color-danger-surface: #22130f;
+    --color-success: #8fd8a8;
+    --color-success-border: #1f4a30;
+    --color-success-surface: #0f1d15;
+    --color-rule: #1d2331;
+    --color-margin: #5b2d31;
+  }
+}
+
+/* Archivo's width axis: one family, condensed for the big room and seat figures. */
+@utility font-condensed {
+  font-stretch: 62%;
+}
+
+@utility font-semicondensed {
+  font-stretch: 87.5%;
+}
+
+/*
+ * An answer-booklet page: faint ruled lines with a red margin rule.
+ * Content inside should start right of --sheet-margin.
+ */
+.answer-sheet {
+  --sheet-margin: 1.75rem;
+  --rule-gap: 2rem;
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(
+      to right,
+      transparent calc(var(--sheet-margin) - 1px),
+      var(--color-margin) calc(var(--sheet-margin) - 1px),
+      var(--color-margin) var(--sheet-margin),
+      transparent var(--sheet-margin)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--rule-gap) - 1px),
+      var(--color-rule) calc(var(--rule-gap) - 1px),
+      var(--color-rule) var(--rule-gap)
+    );
+}
+
+@media (min-width: 640px) {
+  .answer-sheet {
+    --sheet-margin: 4rem;
+  }
+}
+
+/* Pen-written reveal for the student's details as they fill the form. */
+@keyframes write-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@utility animate-write-in {
+  animation: write-in 520ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
 }
 
 html {
-  background-color: #090909;
-  color: #ffffff;
-  font-family: Helvetica, Arial, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }
 
 body {
   @apply bg-background text-text antialiased;
-  font-family: Helvetica, Arial, sans-serif;
   min-height: 100vh;
   margin: 0;
-  padding: 0;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #737373;
+input::placeholder {
+  color: var(--color-muted);
 }
 
-* {
-  box-sizing: border-box;
+::selection {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
-/* Accessible visible keyboard focus */
 :focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
