@@ -97,9 +97,11 @@ async def parse(request: Request):
                 return parse_pdf(pdf_path)
             except ValueError as exc:
                 diagnostic = get_ai_diagnostic(pdf_path)
-                response = {"detail": "PDF could not be parsed."}
                 if diagnostic:
-                    response["aiDiagnostic"] = diagnostic
-                raise HTTPException(status_code=422, detail=response) from exc
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"detail": "PDF could not be parsed.", "aiDiagnostic": diagnostic},
+                    ) from exc
+                raise HTTPException(status_code=422, detail="PDF could not be parsed.") from exc
     except fitz.FileDataError as exc:
         raise HTTPException(status_code=422, detail="PDF could not be parsed.") from exc
