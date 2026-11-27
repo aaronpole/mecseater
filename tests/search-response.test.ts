@@ -3,16 +3,17 @@ import { readSearchResponse } from '@/lib/search/response';
 
 const validPayload = {
   results: [{ name: 'Synthetic Student', roll_no: '24ME001', room_no: '107', seat_no: 'A01' }],
+  examDate: '23/11/2026',
 };
 
 describe('readSearchResponse', () => {
-  it('returns results from a successful JSON response', async () => {
+  it('returns results and exam date from a successful JSON response', async () => {
     const response = new Response(JSON.stringify(validPayload), {
       status: 200,
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
     });
 
-    await expect(readSearchResponse(response)).resolves.toEqual(validPayload.results);
+    await expect(readSearchResponse(response)).resolves.toEqual(validPayload);
   });
 
   it('uses a safe message for an HTML server error', async () => {
@@ -59,8 +60,8 @@ describe('readSearchResponse', () => {
     );
   });
 
-  it('rejects a successful response with an invalid results shape', async () => {
-    const response = new Response(JSON.stringify({ results: 'not-an-array' }), {
+  it('rejects a successful response with an invalid results or exam date shape', async () => {
+    const response = new Response(JSON.stringify({ results: 'not-an-array', examDate: 123 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

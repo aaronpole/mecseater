@@ -11,6 +11,7 @@ const searchResultsSchema = z.array(
 
 const searchPayloadSchema = z.object({
   results: searchResultsSchema,
+  examDate: z.string().nullable(),
   error: z.string().optional(),
 });
 
@@ -45,5 +46,5 @@ export async function readSearchResponse(response: Response) {
     throw new Error('Search service returned invalid data. Please try again later.');
   }
 
-  return parsed.data.results;
+  return parsed.data;
 }
