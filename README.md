@@ -163,6 +163,8 @@ In your first terminal, start the Python PDF parser service:
 
 ```powershell
 $env:PDF_PARSER_SECRET = "your-shared-secret-here"
+# Optional: enables Gemini diagnostics when the deterministic parser cannot read a PDF.
+$env:GEMINI_API_KEY = "your-gemini-api-key"
 py -3 -m uvicorn main:app --app-dir services/pdf-parser --host 127.0.0.1 --port 8000
 ```
 
@@ -190,6 +192,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the student search i
 | `RUN_POSTGRES_INTEGRATION_TESTS` | Set to `1` to run isolated PostgreSQL integration test suites |
 | `PDF_PARSER_URL` | Base URL for the FastAPI PDF parsing microservice (default: `http://127.0.0.1:8000`) |
 | `PDF_PARSER_SECRET` | Shared bearer token for server-to-parser authentication |
+| `GEMINI_API_KEY` | Optional server-side key for Gemini parse-failure diagnostics; configure it in the **Python parser service environment**, never in client-side code or GitHub |
 | `PDF_STORAGE_ENABLED` | Set to `1` when S3 object storage is provisioned and enabled |
 | `AWS_ACCESS_KEY_ID` | Server-only Neon Object Storage access key |
 | `AWS_SECRET_ACCESS_KEY` | Server-only Neon Object Storage secret key |
@@ -236,7 +239,7 @@ npm test -- tests/database.integration.test.ts
 
 * **Frontend & API**: Deployed on [Vercel](https://vercel.com/) utilizing Next.js App Router and serverless route handlers.
 * **Database**: Managed on [Neon](https://neon.tech/) with pooled connections and automated schema migrations.
-* **PDF Parser**: Runs as a private service microservice connected via internal service bindings with shared secret verification.
+* **PDF Parser**: Runs as a private service microservice connected via internal service bindings with shared secret verification. When configured, Gemini provides a short diagnostic only after the deterministic parser fails; it does not generate or publish seating records.
 * **Object Storage**: Private S3-compatible Neon Object Storage bucket for seating PDFs.
 
 ---

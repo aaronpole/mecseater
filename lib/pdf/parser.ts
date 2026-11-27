@@ -128,7 +128,26 @@ export async function parsePdfBytes(pdfBytes: Buffer): Promise<ParsedArrangement
       throw new PdfParserServiceError('PDF exceeds the parser size limit.', 413);
     }
     if (response.status === 422) {
-      throw new PdfParserServiceError('PDF could not be parsed.', 400);
+      let message = 'PDF could not be parsed.';
+      try {
+        const body: unknown = await response.json();
+        const envelope = z.object({
+          detail: z.union([
+            z.string(),
+            z.object({
+              detail: z.string().optional(),
+              aiDiagnostic: z.string().max(700).optional(),
+            }),
+          ]).optional(),
+        }).safeParse(body);
+        if (envelope.success && envelope.data.detail && typeof envelope.data.detail !== 'string') {
+          const diagnostic = envelope.data.detail.aiDiagnostic;
+          if (diagnostic) message += ` AI check: ${diagnostic}`;
+        }
+      } catch {
+        // Keep the stable parser error when the service response is malformed.
+      }
+      throw new PdfParserServiceError(message, 400);
     }
     throw new PdfParserServiceError('PDF parser service returned an error.', 502);
   }

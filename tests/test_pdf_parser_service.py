@@ -65,6 +65,19 @@ class PdfParserServiceTests(unittest.TestCase):
             },
         )
 
+    def test_includes_ai_diagnostic_only_when_configured_and_parser_fails(self):
+        with patch.object(main, "parse_pdf", side_effect=ValueError("layout mismatch")), patch.object(
+            main, "get_ai_diagnostic", return_value="The room heading appears on a separate line."
+        ):
+            response = self.client.post("/parse", content=make_pdf(), headers=HEADERS)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"]["detail"], "PDF could not be parsed.")
+        self.assertEqual(
+            response.json()["detail"]["aiDiagnostic"],
+            "The room heading appears on a separate line.",
+        )
+
     def test_rejects_invalid_pdf_bytes(self):
         response = self.client.post("/parse", content=b"not a PDF", headers=HEADERS)
 
