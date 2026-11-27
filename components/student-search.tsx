@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,24 @@ export function StudentSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [examDate, setExamDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadActiveExamDate() {
+      try {
+        const response = await fetch('/api/search');
+        const data = await readSearchResponse(response);
+        if (!cancelled) setExamDate(data.examDate);
+      } catch {
+        // Keep the search interface usable if the active date cannot be loaded.
+      }
+    }
+
+    loadActiveExamDate();
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -33,9 +51,10 @@ export function StudentSearch() {
 
     try {
       const response = await fetch(`/api/search?query=${encodeURIComponent(cleaned)}`);
-      const searchResults = await readSearchResponse(response);
-      setResults(searchResults);
-      if (!searchResults.length) {
+      const searchData = await readSearchResponse(response);
+      setExamDate(searchData.examDate);
+      setResults(searchData.results);
+      if (!searchData.results.length) {
         setMessage('No results found for the provided search.');
       }
     } catch (error) {
@@ -71,6 +90,13 @@ export function StudentSearch() {
           Search by student name or roll number to look up your allocated examination room, hall, and seat number.
         </p>
       </section>
+
+      {examDate && (
+        <div className="inline-flex items-center gap-2 rounded-md border border-[#262626] bg-[#111111] px-3 py-2 text-sm text-[#d4d4d4]">
+          <span className="text-[#737373]">Exam date</span>
+          <span className="font-mono font-semibold text-white">{examDate}</span>
+        </div>
+      )}
 
       {/* Search Console Form */}
       <Card className="border-[#262626] bg-[#111111] p-4 sm:p-5">
