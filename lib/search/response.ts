@@ -11,12 +11,13 @@ const searchResultsSchema = z.array(
 
 const searchPayloadSchema = z.object({
   results: searchResultsSchema,
+  examDate: z.string().nullable(),
   error: z.string().optional(),
 });
 
 export async function readSearchResponse(response: Response) {
   const contentType = response.headers.get('content-type') || '';
-  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
+  if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
     if (response.status >= 500) {
       throw new Error('Search is temporarily unavailable. Please try again later.');
     }
@@ -45,5 +46,5 @@ export async function readSearchResponse(response: Response) {
     throw new Error('Search service returned invalid data. Please try again later.');
   }
 
-  return parsed.data.results;
+  return parsed.data;
 }
