@@ -38,41 +38,27 @@ const parsedArrangementSchema = z.object({
 
 export function parseDateFromText(text: string): string | null {
   const match = text.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
 
   const value = match[1];
   const [dd, mm, yyyy] = value.split('/').map(Number);
-  if (Number.isNaN(dd) || Number.isNaN(mm) || Number.isNaN(yyyy)) {
-    return null;
-  }
-
-  if (dd < 1 || dd > 31 || mm < 1 || mm > 12) {
-    return null;
-  }
+  if (Number.isNaN(dd) || Number.isNaN(mm) || Number.isNaN(yyyy)) return null;
+  if (dd < 1 || dd > 31 || mm < 1 || mm > 12) return null;
 
   const date = new Date(Date.UTC(yyyy, mm - 1, dd));
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  const normalizedYear = date.getUTCFullYear();
-  const normalizedMonth = date.getUTCMonth();
-  const normalizedDay = date.getUTCDate();
-
-  if (normalizedYear !== yyyy || normalizedMonth !== mm - 1 || normalizedDay !== dd) {
-    return null;
-  }
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== yyyy ||
+    date.getUTCMonth() !== mm - 1 ||
+    date.getUTCDate() !== dd
+  ) return null;
 
   return value;
 }
 
 export function validateExamDate(value: string, referenceNow = new Date()) {
   const parsed = parseDateFromText(value);
-  if (!parsed) {
-    return { valid: false, reason: 'Exam date is missing or invalid in the PDF.' };
-  }
+  if (!parsed) return { valid: false, reason: 'Exam date is missing or invalid in the PDF.' };
 
   const [dd, mm, yyyy] = parsed.split('/').map(Number);
   const examDate = new Date(Date.UTC(yyyy, mm - 1, dd));
@@ -87,17 +73,13 @@ export function validateExamDate(value: string, referenceNow = new Date()) {
     Date.UTC(Number(todayValues.year), Number(todayValues.month) - 1, Number(todayValues.day)),
   );
 
-  if (examDate < today) {
-    return { valid: false, reason: 'This seating arrangement is dated in the past.' };
-  }
-
+  if (examDate < today) return { valid: false, reason: 'This seating arrangement is dated in the past.' };
   return { valid: true };
 }
 
 export async function parsePdfBytes(pdfBytes: Buffer): Promise<ParsedArrangement> {
   const parserUrl = process.env.PDF_PARSER_URL;
   const parserSecret = process.env.PDF_PARSER_SECRET;
-
   if (!parserUrl || !parserSecret) {
     throw new PdfParserServiceError('PDF parser service is not configured.', 500);
   }
@@ -124,11 +106,28 @@ export async function parsePdfBytes(pdfBytes: Buffer): Promise<ParsedArrangement
   }
 
   if (!response.ok) {
-    if (response.status === 413) {
-      throw new PdfParserServiceError('PDF exceeds the parser size limit.', 413);
-    }
+    if (response.status === 413) throw new PdfParserServiceError('PDF exceeds the parser size limit.', 413);
     if (response.status === 422) {
-      throw new PdfParserServiceError('PDF could not be parsed.', 400);
+      let message = 'PDF could not be parsed.';
+      try {
+        const body: unknown = await response.json();
+        const envelope = z.object({
+          detail: z.union([
+            z.string(),
+            z.object({
+              detail: z.string().optional(),
+              aiDiagnostic: z.string().max(700).optional(),
+            }),
+          ]).optional(),
+        }).safeParse(body);
+        if (envelope.success && envelope.data.detail && typeof envelope.data.detail !== 'string') {
+          const diagnostic = envelope.data.detail.aiDiagnostic;
+          if (diagnostic) message += ` AI check: ${diagnostic}`;
+        }
+      } catch {
+        // Keep the stable parser error when the service response is malformed.
+      }
+      throw new PdfParserServiceError(message, 400);
     }
     throw new PdfParserServiceError('PDF parser service returned an error.', 502);
   }
